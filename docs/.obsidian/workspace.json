@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "02-management-plan.md",
+                "file": "03-project-context.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "02-management-plan"
+              "title": "03-project-context"
             }
           }
         ]
@@ -190,8 +190,8 @@
   },
   "active": "a7a5b7de04b2bdfb",
   "lastOpenFiles": [
-    "01-introduction.md",
     "02-management-plan.md",
+    "01-introduction.md",
     "05-risk-analysis.md",
     "04-functional-specification.md",
     "03-project-context.md",
