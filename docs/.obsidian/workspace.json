@@ -1,0 +1,227 @@
+{
+  "main": {
+    "id": "3b058639d9da43ef",
+    "type": "split",
+    "children": [
+      {
+        "id": "3cc9c912c59c1769",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a7a5b7de04b2bdfb",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "47df4dc4fb8a7f42",
+    "type": "split",
+    "children": [
+      {
+        "id": "044366f29294194d",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e5b986ad176431a8",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "22c9ebb3baf3ad74",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "4af74354f0f28f40",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "c79c4d74d86e9b87",
+    "type": "split",
+    "children": [
+      {
+        "id": "4903437fbc1de387",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "8d256b27193391dc",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Welcome.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "0b34b7091720ebb6",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Welcome.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "32a20ca9646d1cf8",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "1c23640cfb4cc669",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "72bfe8f275f18c12",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Welcome.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "a7a5b7de04b2bdfb",
+  "lastOpenFiles": [
+    "01-introduction.md",
+    "02-management-plan.md",
+    "05-risk-analysis.md",
+    "04-functional-specification.md",
+    "03-project-context.md",
+    "06-task-list.md",
+    "07-detailed-budget.md",
+    "08-updated-budget.md",
+    "09-initial-planning.md",
+    "10-network-log.md",
+    "README.md",
+    "assets/pert-chart.png",
+    "team.md",
+    "references.md",
+    "services/README.md",
+    "planning/schedule.md",
+    "overview/workstations.md",
+    "architecture/os-distribution.md",
+    "architecture/network.md",
+    "services/jellyfin.md",
+    "overview/organization.md",
+    "overview/introduction.md",
+    "planning/budget.md",
+    "services/mqtt-iot.md",
+    "services/email-and-messaging.md",
+    "architecture/security.md",
+    "services/web-development-server.md",
+    "services",
+    "planning",
+    "overview",
+    "operations",
+    "infrastructure",
+    "architecture",
+    "docs/services",
+    "docs/planning",
+    "docs/overview",
+    "docs/operations"
+  ]
+}
