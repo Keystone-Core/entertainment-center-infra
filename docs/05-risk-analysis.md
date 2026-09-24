@@ -1,0 +1,7 @@
+# 5. Risk Analysis — FMECA (AMDEC)
+
+The failure mode, effects and criticality analysis (FMECA, *AMDEC* in French) preventively identifies the project's risks. For each risk, the severity (G), the probability of occurrence (F) and the probability of non-detection (ND) are assessed on a scale of 1 to 4; the criticality is the product of these three indices (C = G × F × ND). A criticality threshold of 15 has been adopted: from this threshold upward, a preventive or corrective action takes priority. This table constitutes the initial version and will be updated every week during the implementation.
+
+The complete FMECA table (eleven risks, with their severity, frequency, non-detection, criticality, planned action, owner, status and criticality after action) is found in the “AMDEC” tab of the Planification_calculs.xlsx workbook, submitted with this report; the criticality is calculated there automatically.
+
+**Priority risks (criticality ≥ 15):** the firewall/VPN and the backups, the planning, and the physical server. These are the risks that will be monitored most closely during the implementation. In the workbook, these risks are automatically highlighted as soon as their criticality reaches the threshold. Once the planned actions are implemented, the criticality of each one drops below the threshold (from 8 to 12), as shown in the “Criticité après action” (criticality after action) column of the workbook.
