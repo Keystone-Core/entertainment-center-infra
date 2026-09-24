@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "05-risk-analysis.md",
+                "file": "09-initial-planning.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "05-risk-analysis"
+              "title": "09-initial-planning"
             }
           }
         ]
@@ -190,15 +190,15 @@
   },
   "active": "a7a5b7de04b2bdfb",
   "lastOpenFiles": [
+    "05-risk-analysis.md",
+    "09-initial-planning.md",
     "04-functional-specification.md",
     "03-project-context.md",
     "02-management-plan.md",
     "01-introduction.md",
     "08-updated-budget.md",
-    "05-risk-analysis.md",
     "06-task-list.md",
     "07-detailed-budget.md",
-    "09-initial-planning.md",
     "10-network-log.md",
     "README.md",
     "assets/pert-chart.png",
