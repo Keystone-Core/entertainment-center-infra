@@ -190,6 +190,7 @@
   },
   "active": "a7a5b7de04b2bdfb",
   "lastOpenFiles": [
+    "11-conclusion.md",
     "09-initial-planning.md",
     "10-network-log.md",
     "05-risk-analysis.md",
@@ -216,7 +217,6 @@
     "services/mqtt-iot.md",
     "services/email-and-messaging.md",
     "architecture/security.md",
-    "services/web-development-server.md",
     "services",
     "planning",
     "overview",
