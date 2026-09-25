@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "README.md",
+                "file": "06-task-list.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "README"
+              "title": "06-task-list"
             }
           }
         ]
@@ -190,8 +190,8 @@
   },
   "active": "a7a5b7de04b2bdfb",
   "lastOpenFiles": [
-    "10-network-log.md",
     "README.md",
+    "10-network-log.md",
     "11-conclusion.md",
     "09-initial-planning.md",
     "05-risk-analysis.md",

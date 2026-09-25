@@ -149,6 +149,10 @@ The project planning is in [`docs/`](docs/README.md). It covers the management p
 | Joshua Leclerc       | hMailServer, osTicket, Veeam, Defender for Endpoint, Homarr                            |
 | Loucas Viens         | Proxmox VE, physical network and VLANs, Active Directory, Tailscale, Caddy, \*arr, AMP |
 
+## Contributing
+
+Commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the types, scopes and examples used in this project.
+
 ## License
 
 Released under the [MIT License](LICENSE).
