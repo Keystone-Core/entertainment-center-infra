@@ -1,0 +1,19 @@
+# Local provider cache
+.terraform/
+
+# State can contain secrets and is kept on ctrl-iac only
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+crash.log
+crash.*.log
+
+# Variable files may hold environment-specific or secret values
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
