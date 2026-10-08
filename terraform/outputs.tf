@@ -3,9 +3,10 @@ output "proxmox_version" {
   value       = data.proxmox_version.pve.version
 }
 
-output "proxmox_datastores" {
-  description = "Storage available on the node, with the content each one accepts."
-  value = {
-    for ds in data.proxmox_datastores.node.datastores : ds.id => ds.content_types
-  }
+output "linux_hosts" {
+  description = "Linux hosts managed by Terraform, with their VM ID and address."
+  value = merge(
+    { for name, h in local.containers : name => "LXC ${h.vm_id} - ${h.ip}" },
+    { for name, h in local.vms : name => "VM ${h.vm_id} - ${h.ip}" },
+  )
 }
