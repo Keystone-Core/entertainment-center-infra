@@ -20,7 +20,7 @@ Only the first line is required. The scope is optional, but it is recommended to
 
 | Type       | Use it for                                              | Example                                            |
 | ---------- | ------------------------------------------------------- | -------------------------------------------------- |
-| `feat`     | A new service, host, playbook, script or capability     | `feat(terraform): provision voip01 LXC container`  |
+| `feat`     | A new service, host, playbook, script or capability     | `feat(terraform): provision voip01 VM`             |
 | `fix`      | A correction to something that was broken               | `fix(firewall): allow VLAN 40 DNS to fw01`         |
 | `docs`     | Documentation only                                      | `docs(network-log): add mqtt01 port 8883`          |
 | `refactor` | Restructuring code without changing its behaviour       | `refactor(ansible): split common role into tasks`  |

@@ -35,19 +35,19 @@ The addresses in the reserved range are assigned by DHCP reservation tied to the
 | pve01   | Proxmox VE virtualization host                     | Server   | Proxmox (Debian) | 10   | 10.10.10.10 | N.-A. Anillo |
 | fw01    | pfSense (or OPNsense) firewall and router          | VM       | FreeBSD          | 10   | 10.10.10.1  | L. Viens     |
 | ctl01   | Terraform and Ansible control station              | LXC      | Debian           | 10   | 10.10.10.20 | N.-A. Anillo |
-| ts01    | Tailscale subnet router (VPN)                      | LXC      | Debian           | 10   | 10.10.10.21 | L. Viens     |
+| ts01    | Tailscale subnet router (VPN)                      | VM       | Debian           | 10   | 10.10.10.21 | L. Viens     |
 | dc01    | Active Directory Domain Services, DNS, DHCP        | VM       | Windows Server   | 20   | 10.10.20.10 | J. Leclerc   |
 | mail01  | hMailServer email                                  | VM       | Windows Server   | 20   | 10.10.20.11 | J. Leclerc   |
 | tick01  | osTicket ticket management                         | VM       | Windows Server   | 20   | 10.10.20.12 | J. Leclerc   |
 | bkp01   | Veeam Backup & Replication                         | VM       | Windows Server   | 20   | 10.10.20.13 | J. Leclerc   |
-| voip01  | Asterisk telephony                                 | LXC      | Debian           | 20   | 10.10.20.20 | A. Després   |
-| web01   | Apache, MariaDB, PHP web server (LAMP)             | LXC      | Debian           | 20   | 10.10.20.21 | A. Després   |
-| mon01   | Netdata monitoring                                 | LXC      | Debian           | 20   | 10.10.20.22 | A. Després   |
+| voip01  | Asterisk telephony                                 | VM       | Debian           | 20   | 10.10.20.20 | A. Després   |
+| web01   | Apache, MariaDB, PHP web server (LAMP)             | VM       | Debian           | 20   | 10.10.20.21 | A. Després   |
+| mon01   | Netdata monitoring                                 | VM       | Debian           | 20   | 10.10.20.22 | A. Després   |
 | k3s01   | Kubernetes (k3s)                                   | VM       | Debian           | 20   | 10.10.20.31 | N.-A. Anillo |
-| media01 | Jellyfin, Radarr, Sonarr, Prowlarr, qBittorrent    | LXC      | Debian           | 20   | 10.10.20.40 | A. Després   |
-| dash01  | Homarr dashboard                                   | LXC      | Debian           | 20   | 10.10.20.41 | J. Leclerc   |
-| mqtt01  | Mosquitto MQTT broker                              | LXC      | Debian           | 60   | 10.10.60.10 | N.-A. Anillo |
-| proxy01 | Caddy reverse proxy (HTTPS)                        | LXC      | Debian           | 80   | 10.10.80.10 | L. Viens     |
+| media01 | Jellyfin, Radarr, Sonarr, Prowlarr, qBittorrent    | VM       | Debian           | 20   | 10.10.20.40 | A. Després   |
+| dash01  | Homarr dashboard                                   | VM       | Debian           | 20   | 10.10.20.41 | J. Leclerc   |
+| mqtt01  | Mosquitto MQTT broker                              | VM       | Debian           | 60   | 10.10.60.10 | N.-A. Anillo |
+| proxy01 | Caddy reverse proxy (HTTPS)                        | VM       | Debian           | 80   | 10.10.80.10 | L. Viens     |
 | game01  | AMP game server panel                              | VM       | Debian           | 80   | 10.10.80.20 | L. Viens     |
 
 Each staff workstation is assigned to a specific use and always receives the same address thanks to a DHCP reservation tied to its MAC address; the same applies to the public workstations and the room workstations. The MAC addresses will be recorded when each workstation is installed and entered in the current version of the log. The public workstations are self-service and therefore have no assigned user. Each team member has an ESP32 module whose address is set in the firmware.

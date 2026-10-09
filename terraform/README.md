@@ -1,6 +1,6 @@
 # Terraform
 
-Terraform provisions the VMs and LXC containers on the Proxmox VE host. It uses the [`bpg/proxmox`](https://registry.terraform.io/providers/bpg/proxmox/latest/docs) provider and runs only from the control container, so the whole team shares a single state.
+Terraform provisions the VMs on the Proxmox VE host. It uses the [`bpg/proxmox`](https://registry.terraform.io/providers/bpg/proxmox/latest/docs) provider and runs only from the control container, so the whole team shares a single state.
 
 | Item             | Value                                              |
 | ---------------- | -------------------------------------------------- |
