@@ -52,6 +52,21 @@ resource "proxmox_virtual_environment_vm" "linux" {
     ssd          = true
   }
 
+  # Extra disk for the media library on media01, kept out of backups.
+  # Ansible formats it and mounts it on /srv/media.
+  dynamic "disk" {
+    for_each = try(each.value.media_disk, null) == null ? [] : [each.value.media_disk]
+    content {
+      datastore_id = var.datastore_disks
+      interface    = "scsi1"
+      size         = disk.value
+      backup       = false
+      discard      = "on"
+      iothread     = true
+      ssd          = true
+    }
+  }
+
   network_device {
     bridge = var.lan_bridge
     model  = "virtio"

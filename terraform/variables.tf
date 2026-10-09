@@ -1,24 +1,18 @@
 variable "proxmox_node" {
-  description = "Name of the Proxmox VE node that hosts the VMs and containers."
+  description = "Name of the Proxmox VE node that hosts the VMs."
   type        = string
 }
 
 variable "datastore_disks" {
-  description = "Storage for VM disks, container root filesystems and cloud-init drives."
+  description = "Storage for VM disks and cloud-init drives."
   type        = string
   default     = "vm-data"
 }
 
 variable "datastore_files" {
-  description = "Storage for container templates and imported cloud images."
+  description = "Storage for imported cloud images."
   type        = string
   default     = "local"
-}
-
-variable "lxc_template" {
-  description = "Container template used for every LXC."
-  type        = string
-  default     = "local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst"
 }
 
 variable "debian_cloud_image_url" {
@@ -46,7 +40,7 @@ variable "dns_servers" {
 }
 
 variable "ssh_public_keys" {
-  description = "Public keys allowed to log in to the Linux hosts (root on containers, the vm_user account on VMs)."
+  description = "Public keys allowed to log in to the Linux hosts, as the vm_user account."
   type        = list(string)
   default = [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGLoHBVLwF5kM2zk8oqMrkVXiZeDkt0JOmv2/OqK2LJu ansible@cd",

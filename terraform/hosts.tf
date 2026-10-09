@@ -8,7 +8,7 @@
 # The VM ID is the VLAN number followed by the last octet of the planned
 # address (voip01, 10.10.20.20 -> 2020), so it never has to change.
 locals {
-  containers = {
+  vms = {
     ts01 = {
       vm_id       = 1021
       description = "Tailscale subnet router"
@@ -44,6 +44,15 @@ locals {
       cores       = 2
       memory      = 2048
       disk        = 16
+    }
+    k3s01 = {
+      vm_id       = 2031
+      description = "Kubernetes (k3s)"
+      ip          = "10.10.20.31"
+      planned     = "10.10.20.31 (VLAN 20)"
+      cores       = 4
+      memory      = 8192
+      disk        = 64
     }
     media01 = {
       vm_id       = 2040
@@ -81,18 +90,6 @@ locals {
       cores       = 1
       memory      = 512
       disk        = 4
-    }
-  }
-
-  vms = {
-    k3s01 = {
-      vm_id       = 2031
-      description = "Kubernetes (k3s)"
-      ip          = "10.10.20.31"
-      planned     = "10.10.20.31 (VLAN 20)"
-      cores       = 4
-      memory      = 8192
-      disk        = 64
     }
     game01 = {
       vm_id       = 8020
