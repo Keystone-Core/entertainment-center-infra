@@ -1,0 +1,9 @@
+---
+base_paquets:
+  - sudo
+  - curl
+  - vim
+  - htop
+  - ca-certificates
+  - unattended-upgrades
+base_durcir_ssh: true

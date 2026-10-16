@@ -1,0 +1,71 @@
+---
+- name: Mettre a jour le cache et les paquets
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    upgrade: dist
+
+- name: Installer les paquets de base
+  ansible.builtin.apt:
+    name: "{{ base_paquets }}"
+    state: present
+
+- name: Installer l'agent QEMU (VM seulement)
+  ansible.builtin.apt:
+    name: qemu-guest-agent
+    state: present
+  when: ansible_virtualization_type == "kvm"
+
+- name: Verifier le canal de l'agent QEMU
+  ansible.builtin.stat:
+    path: /dev/virtio-ports/org.qemu.guest_agent.0
+  register: base_canal_qemu
+  when: ansible_virtualization_type == "kvm"
+
+- name: Demarrer l'agent QEMU (si active dans Proxmox)
+  ansible.builtin.service:
+    name: qemu-guest-agent
+    state: started
+  when:
+    - ansible_virtualization_type == "kvm"
+    - base_canal_qemu.stat.exists | default(false)
+
+- name: Regler le fuseau horaire
+  community.general.timezone:
+    name: "{{ cde_fuseau }}"
+
+- name: Installer chrony (pas dans les conteneurs LXC)
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+  when: ansible_virtualization_type != "lxc"
+
+- name: Configurer les serveurs NTP
+  ansible.builtin.template:
+    src: cde.sources.j2
+    dest: /etc/chrony/sources.d/cde.sources
+    mode: "0644"
+  notify: Recharger chrony
+  when: ansible_virtualization_type != "lxc"
+
+- name: Utilisateur ansible present
+  ansible.builtin.user:
+    name: "{{ cde_utilisateur_ansible }}"
+    shell: /bin/bash
+
+- name: Cle SSH partagee autorisee
+  ansible.posix.authorized_key:
+    user: "{{ cde_utilisateur_ansible }}"
+    key: "{{ cde_cle_publique_ansible }}"
+
+- name: Durcir SSH (pas de root, pas de mot de passe)
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/10-cde.conf
+    content: |
+      # Gere par Ansible - ne pas modifier a la main
+      PermitRootLogin no
+      PasswordAuthentication no
+    mode: "0644"
+    validate: "/usr/sbin/sshd -t -f %s"
+  notify: Redemarrer SSH
+  when: base_durcir_ssh

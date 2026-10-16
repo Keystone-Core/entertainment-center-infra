@@ -1,0 +1,9 @@
+---
+cde_domaine: cde.lan
+cde_fuseau: America/Toronto
+cde_ntp_serveurs:
+  - 192.219.64.110
+cde_dns_serveurs:
+  - 10.10.20.10
+cde_utilisateur_ansible: ansible
+cde_cle_publique_ansible: "{{ lookup('file', '~/.ssh/ansible_cde.pub') }}"

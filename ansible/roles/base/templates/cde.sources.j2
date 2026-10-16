@@ -1,0 +1,4 @@
+# Gere par Ansible - ne pas modifier a la main
+{% for serveur in cde_ntp_serveurs %}
+server {{ serveur }} iburst
+{% endfor %}

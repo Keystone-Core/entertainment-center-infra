@@ -1,0 +1,5 @@
+---
+- name: Socle commun des machines Linux
+  hosts: linux
+  roles:
+    - base

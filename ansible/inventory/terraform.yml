@@ -1,0 +1,28 @@
+# Généré par generate-inventory.sh - ne pas modifier à la main
+---
+all:
+  children:
+    linux:
+      children:
+        serveurs:
+          hosts:
+            dash01:
+              ansible_host: 10.10.20.41
+            game01:
+              ansible_host: 10.10.20.82
+            k3s01:
+              ansible_host: 10.10.20.31
+            media01:
+              ansible_host: 10.10.20.40
+            mon01:
+              ansible_host: 10.10.20.22
+            mqtt01:
+              ansible_host: 10.10.20.61
+            proxy01:
+              ansible_host: 10.10.20.81
+            ts01:
+              ansible_host: 10.10.20.51
+            voip01:
+              ansible_host: 10.10.20.20
+            web01:
+              ansible_host: 10.10.20.21
