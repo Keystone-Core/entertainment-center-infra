@@ -1,0 +1,88 @@
+---
+- name: Dossier de configuration k3s
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+
+- name: Configurer k3s
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    mode: "0644"
+  notify: Redemarrer k3s
+
+- name: Telecharger le script d'installation de k3s {{ k3s_version }}
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/k3s-io/k3s/{{ k3s_version | urlencode }}/install.sh"
+    dest: /usr/local/bin/k3s-install.sh
+    mode: "0755"
+    force: true
+
+- name: Lire la version de k3s installee
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  register: k3s_version_installee
+  changed_when: false
+  failed_when: false
+
+# Ne s'execute que si la version voulue n'est pas deja la : changer
+# k3s_version suffit pour mettre k3s a jour.
+- name: Installer k3s {{ k3s_version }}
+  ansible.builtin.command: /usr/local/bin/k3s-install.sh
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+  when: k3s_version not in (k3s_version_installee.stdout | default(''))
+
+- name: Appliquer un changement de configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Service k3s actif au demarrage
+  ansible.builtin.service:
+    name: k3s
+    enabled: true
+    state: started
+
+- name: Attendre que le noeud soit pret
+  ansible.builtin.command: /usr/local/bin/k3s kubectl wait --for=condition=Ready node/{{ inventory_hostname }} --timeout=10s
+  register: k3s_noeud_pret
+  until: k3s_noeud_pret.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
+# Le kubeconfig contient la cle d'administration : jamais dans les logs.
+- name: Lire le kubeconfig
+  ansible.builtin.slurp:
+    src: /etc/rancher/k3s/k3s.yaml
+  register: k3s_kubeconfig
+  no_log: true
+
+- name: Installer kubectl {{ k3s_kubectl_version }} sur le poste de controle
+  ansible.builtin.get_url:
+    url: "https://dl.k8s.io/release/{{ k3s_kubectl_version }}/bin/linux/amd64/kubectl"
+    checksum: "sha256:https://dl.k8s.io/release/{{ k3s_kubectl_version }}/bin/linux/amd64/kubectl.sha256"
+    dest: /usr/local/bin/kubectl
+    mode: "0755"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Dossier ~/.kube sur le poste de controle
+  ansible.builtin.file:
+    path: "{{ k3s_kubeconfig_local | dirname }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Kubeconfig sur le poste de controle
+  ansible.builtin.copy:
+    content: "{{ k3s_kubeconfig.content | b64decode | replace('https://127.0.0.1:6443', 'https://' ~ k3s_ip ~ ':6443') }}"
+    dest: "{{ k3s_kubeconfig_local }}"
+    mode: "0600"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  diff: false
+  no_log: true

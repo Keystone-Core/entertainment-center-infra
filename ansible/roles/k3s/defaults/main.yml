@@ -1,0 +1,8 @@
+---
+k3s_version: v1.36.5+k3s1
+k3s_ip: "{{ ansible_host }}"
+k3s_tls_san:
+  - "{{ inventory_hostname }}"
+  - "{{ ansible_host }}"
+k3s_kubectl_version: "{{ k3s_version.split('+')[0] }}"
+k3s_kubeconfig_local: ~/.kube/config

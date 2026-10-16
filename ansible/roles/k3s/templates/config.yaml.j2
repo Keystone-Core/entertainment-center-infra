@@ -1,0 +1,7 @@
+# Gere par Ansible - ne pas modifier a la main
+node-ip: {{ k3s_ip }}
+write-kubeconfig-mode: "0600"
+tls-san:
+{% for nom in k3s_tls_san %}
+  - {{ nom }}
+{% endfor %}

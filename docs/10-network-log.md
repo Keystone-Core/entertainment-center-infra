@@ -92,6 +92,7 @@ The following table lists the listening ports of each service and the networks a
 | mon01       | Netdata (agents on the other hosts)                      | 19999/TCP                                                          | VLANs 10, 20, 60 and 80                  |
 | mqtt01      | Mosquitto with TLS encryption (port 1883 is disabled)    | 8883/TCP                                                           | VLANs 60, 20 and 30                      |
 | k3s01       | Kubernetes API                                           | 6443/TCP                                                           | VLAN 10 (ctl01)                          |
+| k3s01       | Traefik ingress (HTTP)                                   | 80/TCP                                                             | proxy01                                  |
 | media01     | Jellyfin                                                 | 8096/TCP                                                           | proxy01; VLAN 50                         |
 | media01     | Radarr, Sonarr, Prowlarr                                 | 7878, 8989, 9696/TCP                                               | proxy01                                  |
 | media01     | qBittorrent (web interface)                              | 8080/TCP                                                           | proxy01                                  |
@@ -111,7 +112,7 @@ The firewall applies a default-deny policy: any flow that is not allowed below i
 | 5   | VLAN 50 (rooms)             | dc01; media01                         | 53/UDP and TCP; 8096/TCP                                                             | Allow                       |
 | 6   | VLANs 20 and 30             | mqtt01                                | 8883/TCP                                                                             | Allow                       |
 | 7   | bkp01                       | pve01                                 | 8006/TCP                                                                             | Allow                       |
-| 8   | proxy01 (DMZ)               | tick01, web01, mon01, media01, dash01 | HTTP ports from section 10.2                                                         | Allow                       |
+| 8   | proxy01 (DMZ)               | tick01, web01, mon01, media01, dash01, k3s01 | HTTP ports from section 10.2                                                  | Allow                       |
 | 9   | VLANs 60 and 80             | mon01                                 | 19999/TCP (Netdata agents)                                                           | Allow                       |
 | 10  | VLAN 40 (public workstations) | fw01                                | 53/UDP and TCP (DNS)                                                                 | Allow                       |
 | 11  | VLAN 40 (public workstations) | Internet                            | 80, 443/TCP                                                                          | Allow                       |

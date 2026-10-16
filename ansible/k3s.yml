@@ -1,0 +1,6 @@
+---
+# Lancer a part : ansible-playbook k3s.yml
+- name: Kubernetes (k3s) a un noeud
+  hosts: k3s01
+  roles:
+    - k3s
