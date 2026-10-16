@@ -4,17 +4,17 @@ The work breakdown structure (*organigramme technique de projet*, OTP) breaks th
 
 ## 6.1 Breakdown into Work Packages
 
-| Package   | Project component                                                                        | Main lead                  |
-| --------- | ---------------------------------------------------------------------------------------- | -------------------------- |
-| Package 0 | Project management (meetings, coordination, data entry)                                  | Acting project manager     |
-| Package 1 | Base infrastructure (Proxmox, network, VLANs, Terraform, Kubernetes/k3s, Ansible)        | Nicolas-André Anillo       |
-| Package 2 | Security (pfSense/OPNsense, Tailscale, firewall rules, Caddy)                            | Loucas Viens               |
-| Package 3 | Linux services (Asterisk, LAMP, Netdata)                                                 | Alexy Després              |
-| Package 4 | Windows services (Active Directory, hMailServer, osTicket, Veeam, Defender for Endpoint) | Joshua Leclerc             |
-| Package 5 | Automation (individual scripts)                                                          | Team (1 each)              |
-| Package 6 | MQTT and connected devices (Mosquitto, ESP32)                                            | Nicolas-André Anillo       |
-| Package 7 | Novelty elements (Jellyfin and \*arr suite, Homarr, AMP)                                 | Team (1 each)              |
-| Package 8 | Testing, integration and documentation                                                   | Team                       |
+| Package   | Project component                                                                        | Main lead              |
+| --------- | ---------------------------------------------------------------------------------------- | ---------------------- |
+| Package 0 | Project management (meetings, coordination, data entry)                                  | Acting project manager |
+| Package 1 | Base infrastructure (Proxmox, network, VLANs, Terraform, Kubernetes/k3s, Ansible)        | Nicolas-André Anillo   |
+| Package 2 | Security (pfSense/OPNsense, Tailscale, firewall rules, Caddy)                            | Loucas Viens           |
+| Package 3 | Linux services (Asterisk, LAMP, Netdata)                                                 | Alexy Després          |
+| Package 4 | Windows services (Active Directory, hMailServer, osTicket, Veeam, Defender for Endpoint) | Joshua Leclerc         |
+| Package 5 | Automation (individual scripts)                                                          | Team (1 each)          |
+| Package 6 | MQTT and connected devices (Mosquitto, ESP32)                                            | Nicolas-André Anillo   |
+| Package 7 | Novelty elements (Jellyfin and \*arr suite, Homarr, AMP)                                 | Team (1 each)          |
+| Package 8 | Testing, integration and documentation                                                   | Team                   |
 
 ## 6.2 Task Table
 
