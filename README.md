@@ -140,6 +140,8 @@ The critical path is infrastructure, then security, then services, then the medi
 
 The project planning is in [`docs/`](docs/README.md). It covers the management plan, functional specification, risk analysis (FMECA), work breakdown, budgets, schedule (with the PERT chart) and the [network log](docs/10-network-log.md). The detailed figures (FMECA table, task table, budgets, Gantt chart and S-curve) are in the `Planification_calculs.xlsx` workbook, which isn't in this repository. The network log is the reference for the network's configuration and is updated with every change.
 
+Operating guides are in [`docs/guides/`](docs/guides/), starting with [deploying services on k3s](docs/guides/deploying-services-on-k3s.md).
+
 ## Team
 
 | Member               | Main responsibilities                                                                  |

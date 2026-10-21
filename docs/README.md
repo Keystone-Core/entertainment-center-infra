@@ -46,3 +46,9 @@ Techniques de l'informatique (Computer Science Technology)
     - 10.1 Addressing Plan, Equipment and Assigned Users
     - 10.2 Ports, Services and Firewall Rules
 11. [Conclusion](11-conclusion.md)
+
+---
+
+## Guides
+
+- [Deploying Services on k3s](guides/deploying-services-on-k3s.md): running a service on the `k3s01` cluster and publishing it over HTTPS through `proxy01`
