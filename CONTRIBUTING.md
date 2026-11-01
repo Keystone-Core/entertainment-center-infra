@@ -55,7 +55,7 @@ Add a body when the reason for the change isn't obvious from the diff. Explain *
 Footers reference issues and credit collaborators:
 
 ```text
-fix(dc01): renew DHCP scope for VLAN 30
+fix(dc01): renew DHCP scope for VLAN 20
 
 The scope ran out of leases after the staff PCs were reimaged
 because the lease time was 8 days.
