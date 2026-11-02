@@ -50,6 +50,30 @@ Set-ADAccountPassword loucas -Reset -NewPassword (Read-Host -AsSecureString 'Tem
 Enable-ADAccount loucas
 ```
 
+## Staff workstations
+
+The four staff workstations are Windows 11 VMs on `pve`, in VLAN 20, created by [`windows/creer-postes.sh`](../../windows/creer-postes.sh) (run as root on `pve`; it only creates the VMs that don't exist):
+
+| VM    | Name        | Account   | Role                     |
+| ----- | ----------- | --------- | ------------------------ |
+| 20101 | `pc-ger-01` | `loucas`  | Management               |
+| 20102 | `pc-rec-01` | `nicolas` | Reception and ticketing  |
+| 20103 | `pc-sup-01` | `joshua`  | Technical support        |
+| 20104 | `pc-dev-01` | `alexy`   | Multipurpose workstation |
+
+Each VM has UEFI, TPM 2.0, 2 vCPU, 4 GB of RAM, a 64 GB VirtIO disk and the VirtIO drivers CD. They are created **off and without a system**:
+
+1. **Windows 11 ISO:** Windows 11 Pro, Enterprise or Education (Home can't join a domain), for example Windows 11 Enterprise evaluation. Upload it to `local` → ISO Images on `pve`, then insert it in the four VMs:
+
+   ```bash
+   WIN_ISO=<file name>.iso ./creer-postes.sh
+   ```
+
+2. **Install Windows** from the VM console. When no disk shows up, *Load driver* → VirtIO CD → `vioscsi\w11\amd64`. Create a local account during the installation.
+3. **VirtIO tools:** run `virtio-win-guest-tools.exe` from the VirtIO CD (network driver and QEMU guest agent).
+4. **Check the network:** `ipconfig /all` must show an address in `10.10.20.x`, gateway `10.10.20.1` and DNS server `10.10.20.10`; `nslookup cde.lan` must answer.
+5. **Join the domain** with the workstation's name (below), then log on as `CDE\<account>` once the account is activated.
+
 ## Joining a server or a workstation
 
 On the Windows machine to join, with a domain administrator account (the machine must use `dc01` as DNS server, which the DHCP scope of VLAN 20 provides):
@@ -57,8 +81,8 @@ On the Windows machine to join, with a domain administrator account (the machine
 ```powershell
 # Server
 Add-Computer -DomainName cde.lan -OUPath 'OU=Serveurs,OU=CDE,DC=cde,DC=lan' -Credential (Get-Credential) -Restart
-# Staff workstation
-Add-Computer -DomainName cde.lan -OUPath 'OU=Personnel,OU=Postes,OU=CDE,DC=cde,DC=lan' -Credential (Get-Credential) -Restart
+# Staff workstation (PC-GER-01, PC-REC-01, PC-SUP-01 or PC-DEV-01)
+Add-Computer -DomainName cde.lan -NewName PC-GER-01 -OUPath 'OU=Personnel,OU=Postes,OU=CDE,DC=cde,DC=lan' -Credential (Get-Credential) -Restart
 ```
 
 ## Status (November 2, 2026)
@@ -66,5 +90,5 @@ Add-Computer -DomainName cde.lan -OUPath 'OU=Personnel,OU=Postes,OU=CDE,DC=cde,D
 - Structure, accounts, password policy and GPO: created and checked; a second run of the script changes nothing.
 - **Accounts:** disabled until an administrator activates them.
 - **Member servers:** none yet. `mail01` (VM 103) still has to join the domain (J. Leclerc); `tick01` and `bkp01` don't exist yet.
-- **Workstations:** none can join until a physical port is added to `vmbr1` (network log, section 10.1).
+- **Workstations:** the four VMs exist (20101 to 20104), off and without Windows: a Windows 11 ISO has to be uploaded first. Physical workstations can't connect until a physical port is added to `vmbr1` (network log, section 10.1).
 - The service account `svc-dhcp` stays in the default `Users` container.
