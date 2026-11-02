@@ -1,0 +1,7 @@
+---
+# Lancer a part : ansible-playbook caddy.yml
+# (premier lancement : exporter CLOUDFLARE_API_TOKEN avant)
+- name: Proxy inverse Caddy (HTTPS)
+  hosts: proxy01
+  roles:
+    - caddy

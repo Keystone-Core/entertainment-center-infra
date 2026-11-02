@@ -1,0 +1,103 @@
+---
+# Le paquet officiel fournit l'utilisateur caddy, le service systemd et
+# /etc/caddy ; son binaire est ensuite remplace par une version avec le
+# module Cloudflare (methode des builds personnalises de la doc de Caddy).
+- name: Cle du depot Caddy
+  ansible.builtin.get_url:
+    url: https://dl.cloudsmith.io/public/caddy/stable/gpg.key
+    dest: /usr/share/keyrings/caddy-stable-archive-keyring.asc
+    mode: "0644"
+
+- name: Depot Caddy
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/caddy-stable.list
+    content: |
+      # Gere par Ansible - ne pas modifier a la main
+      deb [signed-by=/usr/share/keyrings/caddy-stable-archive-keyring.asc] https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main
+    mode: "0644"
+
+- name: Installer Caddy
+  ansible.builtin.apt:
+    name: caddy
+    state: present
+    update_cache: true
+
+# Mise de cote du binaire du paquet : apt ne remplacera plus /usr/bin/caddy.
+- name: Detourner le binaire du paquet
+  ansible.builtin.command: dpkg-divert --divert /usr/bin/caddy.default --rename /usr/bin/caddy
+  args:
+    creates: /usr/bin/caddy.default
+
+- name: Lire les modules de Caddy
+  ansible.builtin.command: /usr/bin/caddy list-modules
+  register: caddy_modules
+  changed_when: false
+  failed_when: false
+
+# Ne s'execute que si le module Cloudflare manque : supprimer /usr/bin/caddy
+# et relancer le role suffit pour reprendre la derniere version.
+- name: Telecharger Caddy avec le module Cloudflare
+  ansible.builtin.get_url:
+    url: "https://caddyserver.com/api/download?os=linux&arch=amd64{% for p in caddy_plugins %}&p={{ p | urlencode }}{% endfor %}"
+    dest: /usr/bin/caddy
+    mode: "0755"
+    force: true
+  when: "'dns.providers.cloudflare' not in (caddy_modules.stdout | default(''))"
+  notify: Redemarrer Caddy
+
+- name: Verifier le fichier du jeton
+  ansible.builtin.stat:
+    path: /etc/caddy/caddy.env
+  register: caddy_env
+
+- name: Verifier le jeton Cloudflare
+  ansible.builtin.assert:
+    that: caddy_cloudflare_token | length > 0 or caddy_env.stat.exists
+    fail_msg: "Premier lancement : exporter CLOUDFLARE_API_TOKEN avant de lancer le playbook."
+
+# Le jeton n'est reecrit que s'il est fourni : les lancements suivants
+# gardent celui qui est en place.
+- name: Jeton Cloudflare pour Caddy
+  ansible.builtin.copy:
+    dest: /etc/caddy/caddy.env
+    content: "CF_API_TOKEN={{ caddy_cloudflare_token }}\n"
+    owner: root
+    group: caddy
+    mode: "0640"
+  when: caddy_cloudflare_token | length > 0
+  no_log: true
+  notify: Redemarrer Caddy
+
+- name: Dossier de surcharge du service
+  ansible.builtin.file:
+    path: /etc/systemd/system/caddy.service.d
+    state: directory
+    mode: "0755"
+
+- name: Charger le jeton dans le service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/caddy.service.d/cloudflare.conf
+    content: |
+      # Gere par Ansible - ne pas modifier a la main
+      [Service]
+      EnvironmentFile=/etc/caddy/caddy.env
+    mode: "0644"
+  notify:
+    - Recharger systemd
+    - Redemarrer Caddy
+
+- name: Configurer Caddy
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    mode: "0644"
+  notify: Recharger Caddy
+
+- name: Appliquer les changements
+  ansible.builtin.meta: flush_handlers
+
+- name: Service Caddy actif au demarrage
+  ansible.builtin.service:
+    name: caddy
+    enabled: true
+    state: started

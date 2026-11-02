@@ -1,0 +1,16 @@
+---
+- name: Recharger systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Redemarrer Caddy
+  ansible.builtin.service:
+    name: caddy
+    state: restarted
+
+# Un Caddyfile invalide fait echouer le rechargement : l'ancienne
+# configuration reste en service.
+- name: Recharger Caddy
+  ansible.builtin.service:
+    name: caddy
+    state: reloaded
