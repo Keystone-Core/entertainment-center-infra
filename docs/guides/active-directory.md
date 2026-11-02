@@ -7,7 +7,7 @@
 ```
 cde.lan
 └── CDE
-    ├── Employes     gerance, reception, soutien, polyvalent   ← GPO "CDE - Verrouillage de session"
+    ├── Employes     nicolas, joshua, loucas, alexy   ← GPO "CDE - Verrouillage de session"
     ├── Groupes      GG-Employes, GG-Gerance, GG-Reception, GG-Soutien, GG-Polyvalent
     ├── Serveurs     Windows member servers (mail01, tick01, bkp01)
     └── Postes
@@ -15,12 +15,14 @@ cde.lan
         └── Salles      PC-SALLE-1, PC-SALLE-2
 ```
 
-| Account      | Use                                          | Workstation | Groups                       |
-| ------------ | -------------------------------------------- | ----------- | ---------------------------- |
-| `gerance`    | Management                                   | PC-GER-01   | GG-Gerance, GG-Employes      |
-| `reception`  | Reception and ticketing                      | PC-REC-01   | GG-Reception, GG-Employes    |
-| `soutien`    | Technical support                            | PC-SUP-01   | GG-Soutien, GG-Employes      |
-| `polyvalent` | Multipurpose workstation and web development | PC-DEV-01   | GG-Polyvalent, GG-Employes   |
+The accounts use generic first names, one per staff workstation:
+
+| Account   | Role                                         | Workstation | Groups                       |
+| --------- | -------------------------------------------- | ----------- | ---------------------------- |
+| `nicolas` | Management                                   | PC-GER-01   | GG-Gerance, GG-Employes      |
+| `joshua`  | Reception and ticketing                      | PC-REC-01   | GG-Reception, GG-Employes    |
+| `loucas`  | Technical support                            | PC-SUP-01   | GG-Soutien, GG-Employes      |
+| `alexy`   | Multipurpose workstation and web development | PC-DEV-01   | GG-Polyvalent, GG-Employes   |
 
 The public workstations (VLAN 40) don't join the domain (network log, section 10.1). The OUs are protected from accidental deletion.
 
@@ -44,8 +46,8 @@ To add an employee, a group or an OU, add it to the data at the top of the scrip
 The accounts are created **disabled and without a password**, so no password is ever stored in the repository. To hand an account to an employee, give it a temporary password and enable it; the employee must change it at first logon:
 
 ```powershell
-Set-ADAccountPassword gerance -Reset -NewPassword (Read-Host -AsSecureString 'Temporary password')
-Enable-ADAccount gerance
+Set-ADAccountPassword loucas -Reset -NewPassword (Read-Host -AsSecureString 'Temporary password')
+Enable-ADAccount loucas
 ```
 
 ## Joining a server or a workstation
