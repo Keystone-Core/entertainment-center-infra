@@ -13,6 +13,7 @@ The following table records each version of the log.
 | 1.2     | November 2, 2026   | Loucas Viens | VLANs 10, 40, 60 and 80 and their rules configured on fw01; ts01, mqtt01, proxy01 and game01 moved to their VLAN; NTP through fw01; Tailscale replaced by an Xray VPN; configuration as built recorded in section 10.3 |
 | 1.3     | November 2, 2026   | Loucas Viens | ctrl-iac moved to VLAN 10 (10.10.10.20, DNS through fw01); temporary VLAN 20 rule removed |
 | 1.4     | November 2, 2026   | Loucas Viens | DHCP relay of VLAN 40 to dc01; 10.10.20.200 (VPN) excluded from dc01's VLAN 20 pool; unused LAN rules and aliases removed; ts01 removed |
+| 1.5     | November 2, 2026   | Loucas Viens | Staff workstations created as VMs (20101 to 20104) in VLAN 20, with their MAC addresses |
 
 ## 10.1 Addressing Plan, Equipment and Assigned Users
 
@@ -30,11 +31,19 @@ The initial plan had eight VLANs, with separate networks for the staff workstati
 
 Within VLAN 20, the addresses are divided by type of device: .10 to .99 for the servers (static addressing), .100 to .149 for the workstations and phones (DHCP reservations) and .150 to .199 for the dynamic DHCP pool.
 
-**Implementation status (version 1.4).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
+**Implementation status (version 1.5).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
 
 - **pve01** keeps its address on the cégep network (10.85.2.127, bridge vmbr0) instead of 10.10.10.10. fw01's WAN interface is also on that network and gets its address by DHCP (10.85.2.16 at the time of writing).
 - **The control station** is the container ctrl-iac (LXC 110), at 10.10.10.20 in VLAN 10 as planned. It uses fw01 (10.10.10.1) as DNS server, which also resolves the cde.lan domain. Since pve01 is on the cégep network, it reaches the Proxmox API through fw01 (section 10.3, GESTION).
 - **vmbr1 has no physical port**, so no physical device (switch, workstation, phone, ESP32) is connected yet; the VLANs only carry VMs.
+- **Staff workstations** are Windows 11 VMs on pve01, in VLAN 20 (untagged on vmbr1), created by [`windows/creer-postes.sh`](../windows/creer-postes.sh). Their MAC addresses are the ones to use for the DHCP reservations once dc01's VLAN 20 scope covers .101 to .104; until then they get an address from the current pool.
+
+  | Workstation | VM    | Account   | MAC address         |
+  | ----------- | ----- | --------- | ------------------- |
+  | PC-GER-01   | 20101 | `loucas`  | BC:24:11:9C:DC:9F   |
+  | PC-REC-01   | 20102 | `nicolas` | BC:24:11:E9:93:4C   |
+  | PC-SUP-01   | 20103 | `joshua`  | BC:24:11:0F:58:C3   |
+  | PC-DEV-01   | 20104 | `alexy`   | BC:24:11:5D:57:D1   |
 - **DHCP:** fw01's DHCP servers (IPv4 and IPv6) are disabled; dc01 serves DHCP, authorized in Active Directory. VLAN 20 is served directly and VLAN 40 through fw01's DHCP relay. dc01's scopes still follow the eight-VLAN plan:
 
   | Scope        | Name              | Range                      | Exclusions                  | Router, DNS                | Status                         |
