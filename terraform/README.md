@@ -4,7 +4,7 @@ Terraform provisions the VMs on the Proxmox VE host. It uses the [`bpg/proxmox`]
 
 | Item             | Value                                              |
 | ---------------- | -------------------------------------------------- |
-| Control station  | LXC 110 `ctrl-iac` (`10.85.2.128`), Debian 13      |
+| Control station  | LXC 110 `ctrl-iac` (`10.10.10.20`, VLAN 10), Debian 13 |
 | Proxmox API      | `https://10.85.2.127:8006/`, node `pve`            |
 | Proxmox user     | `terraform@pve`, role `TerraformProv`, token `provider` |
 | Repository clone | `/root/entertainment-center-infra` on `ctrl-iac`   |
@@ -24,10 +24,11 @@ Never commit the token, `*.tfvars` or `*.tfstate` files. The [`.gitignore`](.git
 
 ## Usage
 
-Edit the code on your own computer and push it. Then apply it from `ctrl-iac`:
+Edit the code on your own computer and push it. Then apply it from `ctrl-iac`, which you reach through the Proxmox host (only VLAN 10 can reach it directly):
 
 ```bash
-ssh root@10.85.2.128
+ssh root@10.85.2.127          # pve
+pct enter 110                 # root shell on ctrl-iac
 cd /root/entertainment-center-infra && git pull
 cd terraform
 terraform init

@@ -143,10 +143,10 @@ Wait until the pod is `Running` and `1/1` ready.
 
 ### 3. Test it directly
 
-`ctrl-iac` is on the same subnet as `k3s01`, so you can test Traefik without going through `proxy01`:
+The firewall only lets `proxy01` reach Traefik's port 80, so test it from `k3s01` itself, through SSH from `ctrl-iac`:
 
 ```bash
-curl -H 'Host: whoami.example' http://10.10.20.31/
+ssh -i ~/.ssh/ansible_cde ansible@10.10.20.31 curl -s -H 'Host: whoami.example' http://127.0.0.1/
 ```
 
 whoami answers with the request it received. A `404 page not found` means that Traefik found no route for that hostname (see [Troubleshooting](#troubleshooting)).
