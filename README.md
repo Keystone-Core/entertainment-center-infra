@@ -11,7 +11,7 @@ The centre has four employees and a single site, so the infrastructure has to st
 - **One physical server, everything virtualized.** A single Proxmox VE host runs every service as a VM, including the firewall. The only exception is the Terraform control station, which lives in an LXC container.
 - **Infrastructure as code.** Terraform provisions the VMs, and Ansible configures them. Both run from a dedicated control station (`ctl01`).
 - **Five segmented VLANs** behind a pfSense/OPNsense firewall with a default-deny policy. The public workstations are fully isolated from the internal network.
-- **Secure remote access** through Tailscale, with no fixed public IP needed. Web interfaces are published over HTTPS by a Caddy reverse proxy.
+- **Secure remote access** through an Xray VPN, published on a single port of the firewall. Web interfaces are published over HTTPS by a Caddy reverse proxy.
 - **Linux or Windows per service.** Windows Server handles the directory, email, ticketing and backups. Debian handles everything else.
 - **Connected devices.** Each team member builds an ESP32 module that talks to a TLS-encrypted Mosquitto MQTT broker.
 
@@ -20,17 +20,17 @@ The centre has four employees and a single site, so the infrastructure has to st
 ```mermaid
 flowchart TB
     internet((Internet))
-    ts[Tailscale<br>remote admins]
+    admins[Remote admins]
 
     subgraph pve01["pve01 — Proxmox VE host"]
         fw01["fw01<br>pfSense / OPNsense"]
         subgraph mgmt["VLAN 10 · Management"]
             ctl01[ctl01<br>Terraform + Ansible]
-            ts01[ts01<br>Tailscale router]
         end
         subgraph srv["VLAN 20 · Internal"]
             win["dc01 · mail01 · tick01 · bkp01<br>(Windows Server)"]
             lin["voip01 · web01 · mon01 · k3s01<br>media01 · dash01 (Debian)"]
+            vpn[Xray VPN<br>10.10.20.200]
         end
         subgraph iot["VLAN 60 · Connected devices"]
             mqtt01[mqtt01<br>Mosquitto]
@@ -50,7 +50,8 @@ flowchart TB
     end
 
     internet <--> fw01
-    ts -. VPN .-> ts01
+    admins -. "VPN (TCP 443)" .-> fw01
+    fw01 -. port forwarding .-> vpn
     fw01 --- mgmt & srv & iot & dmz
     fw01 --- lan
 ```
@@ -75,8 +76,9 @@ The internal network uses `10.10.0.0/16`. Each VLAN gets its own `/24` whose thi
 | `pve01`   | Proxmox VE virtualization host                 | Server   | Proxmox        | 10   | `10.10.10.10` |
 | `fw01`    | pfSense/OPNsense firewall and router           | VM       | FreeBSD        | 10   | `10.10.10.1`  |
 | `ctl01`   | Terraform and Ansible control station          | LXC      | Debian         | 10   | `10.10.10.20` |
-| `ts01`    | Tailscale subnet router                        | VM       | Debian         | 10   | `10.10.10.21` |
+| `ts01`    | Former Tailscale router, unused                | VM       | Debian         | 10   | `10.10.10.21` |
 | `dc01`    | Active Directory, DNS, DHCP                    | VM       | Windows Server | 20   | `10.10.20.10` |
+| —         | Xray VPN server                                | —        | —              | 20   | `10.10.20.200` |
 | `mail01`  | hMailServer email                              | VM       | Windows Server | 20   | `10.10.20.11` |
 | `tick01`  | osTicket help desk                             | VM       | Windows Server | 20   | `10.10.20.12` |
 | `bkp01`   | Veeam Backup & Replication                     | VM       | Windows Server | 20   | `10.10.20.13` |
@@ -98,8 +100,8 @@ Microsoft Defender for Endpoint protects the workstations and servers.
 - **Public workstations** (VLAN 40) can reach only the Internet (web), the firewall's DNS resolver and the game servers. They are blocked from every internal VLAN and don't join the domain.
 - **Connected devices** (VLAN 60) can't reach the Internet or other VLANs, except for the Netdata agents reporting to `mon01`. MQTT runs only on TLS (port 8883).
 - **Service web interfaces** are published over HTTPS by `proxy01`, and Caddy manages the certificates. The only exception is Jellyfin, which the projection PCs reach directly inside VLAN 20. The Proxmox and firewall admin interfaces are reachable only from the management VLAN.
-- **Remote administration** goes through Tailscale. `ts01` advertises VLANs 10, 20 and 80, and Tailscale ACLs limit what each account can reach.
-- **Internet-facing services** (email and game instances) use port forwarding and dynamic DNS on the firewall's WAN address.
+- **Remote administration** goes through the Xray VPN server (`10.10.20.200`). The firewall forwards TCP 443 on its WAN address to it, and nothing else of the internal network is published.
+- **Internet-facing services** (VPN, email and game instances) use port forwarding and dynamic DNS on the firewall's WAN address.
 
 The [network log](docs/10-network-log.md) lists every port and all 16 firewall rules.
 
@@ -111,7 +113,7 @@ The [network log](docs/10-network-log.md) lists every port and all 16 firewall r
 | Provisioning         | Terraform                                                         |
 | Configuration        | Ansible playbooks, plus one automation script per team member     |
 | Orchestration        | Kubernetes (k3s)                                                  |
-| Network and security | pfSense/OPNsense, VLANs, Tailscale, Caddy, Defender for Endpoint  |
+| Network and security | pfSense/OPNsense, VLANs, Xray VPN, Caddy, Defender for Endpoint   |
 | Directory            | Active Directory Domain Services (DNS, DHCP)                      |
 | Communication        | hMailServer (email), Asterisk (VoIP)                              |
 | Operations           | osTicket, Veeam Backup & Replication, Netdata, Homarr             |
@@ -125,7 +127,7 @@ The project is in the **planning phase**. Implementation runs from week 6 to wee
 | Weeks     | Work package                                                     |
 | --------- | ---------------------------------------------------------------- |
 | W6 – W7   | Base infrastructure: Proxmox, network, VLANs, Terraform, Ansible (k3s continues until W12) |
-| W8 – W9   | Security: firewall, Tailscale, firewall rules, Caddy             |
+| W8 – W9   | Security: firewall, Xray VPN, firewall rules, Caddy              |
 | W10 – W11 | Linux services, Windows services, MQTT and ESP32 modules         |
 | W12       | Individual automation scripts                                    |
 | W12 – W13 | Media stack, Homarr, AMP game servers                            |
@@ -146,7 +148,7 @@ Operating guides are in [`docs/guides/`](docs/guides/), starting with [deploying
 | Nicolas-André Anillo | Ansible automation, IP addressing and VLANs, firewall rules, MQTT, Jellyfin            |
 | Alexy Després        | Terraform, Kubernetes (k3s), Asterisk VoIP, LAMP web server, Netdata                   |
 | Joshua Leclerc       | hMailServer, osTicket, Veeam, Defender for Endpoint, Homarr                            |
-| Loucas Viens         | Proxmox VE, physical network and VLANs, Active Directory, Tailscale, Caddy, \*arr, AMP |
+| Loucas Viens         | Proxmox VE, physical network and VLANs, Active Directory, Xray VPN, Caddy, \*arr, AMP  |
 
 ## Contributing
 

@@ -11,7 +11,7 @@ The team is made up of four people, each considered a network manager in trainin
 | Nicolas-André Anillo | Centralized automation (Ansible playbooks), IP addressing plan and VLAN segmentation, pfSense/OPNsense firewall and segmentation rules, MQTT broker (Mosquitto), multimedia streaming (Jellyfin), individual automation script |
 | Alexy Després        | Terraform provisioning, container orchestration (Kubernetes/k3s), Linux services (Asterisk VoIP, LAMP web server, Netdata monitoring), individual automation script                                                            |
 | Joshua Leclerc       | Windows services (hMailServer email, osTicket ticketing, Veeam backups), Microsoft Defender for Endpoint, Homarr dashboard, individual automation script                                                                       |
-| Loucas Viens         | Infrastructure and network (Proxmox VE, physical network and VLANs), Active Directory, Tailscale VPN, Caddy reverse proxy, \*arr suite and qBittorrent, game server panel (AMP), individual automation script                  |
+| Loucas Viens         | Infrastructure and network (Proxmox VE, physical network and VLANs), Active Directory, Xray VPN, Caddy reverse proxy, \*arr suite and qBittorrent, game server panel (AMP), individual automation script                  |
 
 ## 2.2 Project Manager Rotation and Duties
 
