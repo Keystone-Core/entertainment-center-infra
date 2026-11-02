@@ -7,7 +7,7 @@
 ```
 cde.lan
 └── CDE
-    ├── Employes     nicolas, joshua, loucas, alexy   ← GPO "CDE - Verrouillage de session"
+    ├── Employes     loucas, nicolas, joshua, alexy   ← GPO "CDE - Verrouillage de session"
     ├── Groupes      GG-Employes, GG-Gerance, GG-Reception, GG-Soutien, GG-Polyvalent
     ├── Serveurs     Windows member servers (mail01, tick01, bkp01)
     └── Postes
@@ -19,9 +19,9 @@ The accounts use generic first names, one per staff workstation:
 
 | Account   | Role                                         | Workstation | Groups                       |
 | --------- | -------------------------------------------- | ----------- | ---------------------------- |
-| `nicolas` | Management                                   | PC-GER-01   | GG-Gerance, GG-Employes      |
-| `joshua`  | Reception and ticketing                      | PC-REC-01   | GG-Reception, GG-Employes    |
-| `loucas`  | Technical support                            | PC-SUP-01   | GG-Soutien, GG-Employes      |
+| `loucas`  | Management                                   | PC-GER-01   | GG-Gerance, GG-Employes      |
+| `nicolas` | Reception and ticketing                      | PC-REC-01   | GG-Reception, GG-Employes    |
+| `joshua`  | Technical support                            | PC-SUP-01   | GG-Soutien, GG-Employes      |
 | `alexy`   | Multipurpose workstation and web development | PC-DEV-01   | GG-Polyvalent, GG-Employes   |
 
 The public workstations (VLAN 40) don't join the domain (network log, section 10.1). The OUs are protected from accidental deletion.

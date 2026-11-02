@@ -55,10 +55,10 @@ $groupes = @(
 
 # Noms generiques (prenoms de l'equipe), un compte par poste du personnel.
 $employes = @(
-    @{ Compte = 'nicolas'; Nom = 'Nicolas'; Role = 'Gerance';            Groupe = 'GG-Gerance';    Poste = 'PC-GER-01' }
-    @{ Compte = 'joshua';  Nom = 'Joshua';  Role = 'Accueil et billetterie'; Groupe = 'GG-Reception'; Poste = 'PC-REC-01' }
-    @{ Compte = 'loucas';  Nom = 'Loucas';  Role = 'Soutien technique';  Groupe = 'GG-Soutien';    Poste = 'PC-SUP-01' }
-    @{ Compte = 'alexy';   Nom = 'Alexy';   Role = 'Poste polyvalent';   Groupe = 'GG-Polyvalent'; Poste = 'PC-DEV-01' }
+    @{ Compte = 'loucas';  Nom = 'Loucas';  Role = 'Gerance';                Groupe = 'GG-Gerance';    Poste = 'PC-GER-01' }
+    @{ Compte = 'nicolas'; Nom = 'Nicolas'; Role = 'Accueil et billetterie'; Groupe = 'GG-Reception';  Poste = 'PC-REC-01' }
+    @{ Compte = 'joshua';  Nom = 'Joshua';  Role = 'Soutien technique';      Groupe = 'GG-Soutien';    Poste = 'PC-SUP-01' }
+    @{ Compte = 'alexy';   Nom = 'Alexy';   Role = 'Poste polyvalent';       Groupe = 'GG-Polyvalent'; Poste = 'PC-DEV-01' }
 )
 
 $politiqueMdp = @{
