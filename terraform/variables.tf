@@ -27,18 +27,6 @@ variable "lan_bridge" {
   default     = "vmbr1"
 }
 
-variable "lan_gateway" {
-  description = "Default gateway of the server network (fw01)."
-  type        = string
-  default     = "10.10.20.1"
-}
-
-variable "dns_servers" {
-  description = "DNS servers given to the Linux hosts."
-  type        = list(string)
-  default     = ["10.10.20.1"]
-}
-
 variable "ssh_public_keys" {
   description = "Public keys allowed to log in to the Linux hosts, as the vm_user account."
   type        = list(string)

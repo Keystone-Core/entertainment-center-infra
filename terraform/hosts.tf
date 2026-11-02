@@ -1,9 +1,8 @@
 # Linux hosts from the network log (docs/10-network-log.md).
 #
-# Only the server network exists behind fw01 for now (10.10.20.0/24,
-# untagged on vmbr1), so every host is placed there. Hosts planned for
-# another VLAN use a temporary address; `planned` keeps their final one.
-# To move a host once its VLAN exists, change `ip` and add the VLAN tag.
+# VLAN 20 is untagged on vmbr1, so its hosts have no `vlan`. Hosts in
+# another VLAN set `vlan` to its tag. The gateway and DNS server are fw01's
+# address in the host's subnet (.1), computed from `ip` in vms.tf.
 #
 # The VM ID is the VLAN number followed by the last octet of the planned
 # address (voip01, 10.10.20.20 -> 2020), so it never has to change.
@@ -12,7 +11,8 @@ locals {
     ts01 = {
       vm_id       = 1021
       description = "Tailscale subnet router"
-      ip          = "10.10.20.51"
+      ip          = "10.10.10.21"
+      vlan        = 10
       planned     = "10.10.10.21 (VLAN 10)"
       cores       = 1
       memory      = 512
@@ -76,7 +76,8 @@ locals {
     mqtt01 = {
       vm_id       = 6010
       description = "Mosquitto MQTT broker (TLS)"
-      ip          = "10.10.20.61"
+      ip          = "10.10.60.10"
+      vlan        = 60
       planned     = "10.10.60.10 (VLAN 60)"
       cores       = 1
       memory      = 512
@@ -85,7 +86,8 @@ locals {
     proxy01 = {
       vm_id       = 8010
       description = "Caddy reverse proxy (HTTPS)"
-      ip          = "10.10.20.81"
+      ip          = "10.10.80.10"
+      vlan        = 80
       planned     = "10.10.80.10 (VLAN 80)"
       cores       = 1
       memory      = 512
@@ -94,7 +96,8 @@ locals {
     game01 = {
       vm_id       = 8020
       description = "AMP game server panel"
-      ip          = "10.10.20.82"
+      ip          = "10.10.80.20"
+      vlan        = 80
       planned     = "10.10.80.20 (VLAN 80)"
       cores       = 4
       memory      = 16384
