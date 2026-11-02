@@ -27,10 +27,9 @@ resource "proxmox_virtual_environment_vm" "linux" {
     type = "l26"
   }
 
-  # The cloud image has no QEMU guest agent; enable this once Ansible
-  # installs it.
+  # The base Ansible role installs the QEMU guest agent.
   agent {
-    enabled = false
+    enabled = true
   }
 
   cpu {
@@ -67,9 +66,11 @@ resource "proxmox_virtual_environment_vm" "linux" {
     }
   }
 
+  # No tag for VLAN 20, which is untagged on vmbr1.
   network_device {
-    bridge = var.lan_bridge
-    model  = "virtio"
+    bridge  = var.lan_bridge
+    model   = "virtio"
+    vlan_id = try(each.value.vlan, null)
   }
 
   # Debian cloud images log their console to the serial port.
@@ -81,12 +82,14 @@ resource "proxmox_virtual_environment_vm" "linux" {
     ip_config {
       ipv4 {
         address = "${each.value.ip}/24"
-        gateway = var.lan_gateway
+        gateway = cidrhost("${each.value.ip}/24", 1)
       }
     }
 
+    # fw01 resolves DNS on every VLAN; the firewall rules only allow DNS
+    # to its address in the host's own subnet.
     dns {
-      servers = var.dns_servers
+      servers = [cidrhost("${each.value.ip}/24", 1)]
     }
 
     user_account {

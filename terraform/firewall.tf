@@ -14,7 +14,7 @@ resource "proxmox_virtual_environment_vm" "fw01" {
   on_boot       = true
   started       = true
   scsi_hardware = "virtio-scsi-single"
-  boot_order    = ["ide0"]
+  boot_order    = ["net0", "ide0", "ide2"]
 
   # Never reboot the firewall on its own: changes that need a restart
   # wait for the next planned reboot.
@@ -31,7 +31,7 @@ resource "proxmox_virtual_environment_vm" "fw01" {
   }
 
   memory {
-    dedicated = 4096
+    dedicated = 16384
   }
 
   disk {
@@ -51,6 +51,7 @@ resource "proxmox_virtual_environment_vm" "fw01" {
     bridge      = "vmbr0"
     mac_address = "BC:24:11:D2:82:2F"
     model       = "virtio"
+    firewall    = true
   }
 
   # LAN (server network)
