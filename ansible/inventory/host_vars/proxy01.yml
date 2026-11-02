@@ -1,0 +1,9 @@
+---
+# Sites publies par Caddy, en HTTPS sur <nom>.divertissementestrie.ca.
+# L'amont doit etre autorise par la regle 4 du pare-feu (PORTS_HTTP
+# vers SERVICES_HTTP). Exemples :
+#   - nom: netdata
+#     upstream: 10.10.20.22:19999
+#   - nom: homarr
+#     upstream: 10.10.20.41:7575
+caddy_sites: []

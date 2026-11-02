@@ -1,0 +1,12 @@
+---
+caddy_domaine: divertissementestrie.ca
+# Courriel du compte ACME (avis d'expiration), optionnel
+caddy_courriel: ""
+# Jeton d'API Cloudflare (Zone.DNS:Edit), lu dans l'environnement : jamais
+# dans le depot. Seulement necessaire au premier lancement ou pour le changer.
+caddy_cloudflare_token: "{{ lookup('env', 'CLOUDFLARE_API_TOKEN') }}"
+# Modules ajoutes au binaire de Caddy (challenge DNS chez Cloudflare)
+caddy_plugins:
+  - github.com/caddy-dns/cloudflare
+# Sites publies, definis dans inventory/host_vars/proxy01.yml
+caddy_sites: []

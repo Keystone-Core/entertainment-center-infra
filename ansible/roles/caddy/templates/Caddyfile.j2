@@ -1,0 +1,14 @@
+# Gere par Ansible - ne pas modifier a la main
+{
+{% if caddy_courriel %}
+	email {{ caddy_courriel }}
+{% endif %}
+	# Certificats par challenge DNS : aucun port entrant n'est necessaire.
+	acme_dns cloudflare {env.CF_API_TOKEN}
+}
+{% for site in caddy_sites %}
+
+{{ site.nom }}.{{ caddy_domaine }} {
+	reverse_proxy {{ site.upstream }}
+}
+{% endfor %}
