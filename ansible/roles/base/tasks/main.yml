@@ -69,3 +69,11 @@
     validate: "/usr/sbin/sshd -t -f %s"
   notify: Redemarrer SSH
   when: base_durcir_ssh
+
+- name: Desactiver les serveurs NTP publics de Debian
+  ansible.builtin.replace:
+    path: /etc/chrony/chrony.conf
+    regexp: '^(pool .*)$'
+    replace: '# \1'
+  notify: Redemarrer chrony
+  when: ansible_virtualization_type != "lxc"
