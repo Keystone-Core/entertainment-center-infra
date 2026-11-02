@@ -11,6 +11,7 @@ The following table records each version of the log.
 | 1.0     | September 21, 2026 | Loucas Viens | Log created: addressing plan, equipment, ports and firewall rules       |
 | 1.1     | November 1, 2026   | Loucas Viens | Staff, rooms and telephony VLANs (30, 50, 70) merged into VLAN 20; eight VLANs reduced to five and twenty firewall rules to sixteen |
 | 1.2     | November 2, 2026   | Loucas Viens | VLANs 10, 40, 60 and 80 and their rules configured on fw01; ts01, mqtt01, proxy01 and game01 moved to their VLAN; NTP through fw01; Tailscale replaced by an Xray VPN; configuration as built recorded in section 10.3 |
+| 1.3     | November 2, 2026   | Loucas Viens | ctrl-iac moved to VLAN 10 (10.10.10.20, DNS through fw01); temporary VLAN 20 rule removed |
 
 ## 10.1 Addressing Plan, Equipment and Assigned Users
 
@@ -28,10 +29,10 @@ The initial plan had eight VLANs, with separate networks for the staff workstati
 
 Within VLAN 20, the addresses are divided by type of device: .10 to .99 for the servers (static addressing), .100 to .149 for the workstations and phones (DHCP reservations) and .150 to .199 for the dynamic DHCP pool.
 
-**Implementation status (version 1.2).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
+**Implementation status (version 1.3).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
 
 - **pve01** keeps its address on the cégep network (10.85.2.127, bridge vmbr0) instead of 10.10.10.10. fw01's WAN interface is also on that network and gets its address by DHCP (10.85.2.16 at the time of writing).
-- **The control station** is the container ctrl-iac (LXC 110). It stays at 10.10.20.52 in VLAN 20 until it is moved to 10.10.10.20; a temporary rule on VLAN 20 gives it the management access of rule 1 (section 10.3).
+- **The control station** is the container ctrl-iac (LXC 110), at 10.10.10.20 in VLAN 10 as planned. It uses fw01 (10.10.10.1) as DNS server, which also resolves the cde.lan domain. Since pve01 is on the cégep network, it reaches the Proxmox API through fw01 (section 10.3, GESTION).
 - **vmbr1 has no physical port**, so no physical device (switch, workstation, phone, ESP32) is connected yet; the VLANs only carry VMs.
 - **DHCP:** fw01's DHCP servers (IPv4 and IPv6) are disabled. dc01 does not serve DHCP yet, so the DHCP relay of VLAN 40 is not configured.
 
@@ -150,7 +151,7 @@ The rules use the following aliases:
 | `PORTS_HTTP`    | 80, 7575, 7878, 8080, 8096, 8989, 9696, 19999                           |
 | `PORTS_JEUX`    | 25565                                                                   |
 | `SERVICES_HTTP` | tick01, web01, mon01, k3s01, media01, dash01                            |
-| `CTRL_IAC`, `Proxmox`, `MON01`, `MQTT01`, `PROXY01`, `GAME01`, `NTP_CEGEP` | One host each: 10.10.20.52, 10.85.2.127, 10.10.20.22, 10.10.60.10, 10.10.80.10, 10.10.80.20, 192.219.64.110 |
+| `CTRL_IAC`, `Proxmox`, `MON01`, `MQTT01`, `PROXY01`, `GAME01`, `NTP_CEGEP` | One host each: 10.10.10.20, 10.85.2.127, 10.10.20.22, 10.10.60.10, 10.10.80.10, 10.10.80.20, 192.219.64.110 |
 
 "cégep network" is the WAN subnet (10.85.2.0/24). "Internet" is any address outside `PRIVES`.
 
@@ -167,12 +168,11 @@ The rules use the following aliases:
 | Allow         | VLAN 20    | fw01                       | 53/TCP and UDP       | DNS                                                      |
 | Allow         | VLAN 20    | fw01                       | 123/UDP              | NTP                                                      |
 | Allow         | VLAN 20    | Any                        | ICMP                 | Ping for diagnostics                                     |
-| Allow         | ctrl-iac   | Proxmox                    | 8006/TCP             | Proxmox API for Terraform                                |
+| Allow         | ctrl-iac   | Proxmox                    | 8006/TCP             | Former Proxmox API rule, unused since ctrl-iac is in VLAN 10 (v1.3) |
 | Block and log | VLAN 20    | cégep network              | All                  | No access to the cégep network                           |
 | Allow         | VLAN 20    | `NTP_CEGEP`                | 123/UDP              | Former NTP source, unused since v1.2                     |
 | Allow         | VLAN 20    | Any                        | TCP `WEB`            | Web, Internet and other VLANs (covers rule 2)            |
 | Allow         | ts01 (old address) | Any                | UDP 41641, 3478      | Former Tailscale rule, unused since v1.2                 |
-| Allow         | ctrl-iac   | `RESEAUX_CDE`              | TCP `PORTS_ADMIN`    | **Temporary:** rule 1 until ctrl-iac moves to VLAN 10    |
 | Allow         | VLAN 20    | mqtt01                     | 8883/TCP             | Rule 3                                                   |
 | Block and log | VLAN 20    | Any                        | All                  | Everything else                                          |
 
