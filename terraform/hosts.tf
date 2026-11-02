@@ -8,16 +8,6 @@
 # address (voip01, 10.10.20.20 -> 2020), so it never has to change.
 locals {
   vms = {
-    ts01 = {
-      vm_id       = 1021
-      description = "Tailscale subnet router"
-      ip          = "10.10.10.21"
-      vlan        = 10
-      planned     = "10.10.10.21 (VLAN 10)"
-      cores       = 1
-      memory      = 512
-      disk        = 4
-    }
     voip01 = {
       vm_id       = 2020
       description = "Asterisk IP telephony"

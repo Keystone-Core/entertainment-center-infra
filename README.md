@@ -76,7 +76,6 @@ The internal network uses `10.10.0.0/16`. Each VLAN gets its own `/24` whose thi
 | `pve01`   | Proxmox VE virtualization host                 | Server   | Proxmox        | 10   | `10.10.10.10` |
 | `fw01`    | pfSense/OPNsense firewall and router           | VM       | FreeBSD        | 10   | `10.10.10.1`  |
 | `ctl01`   | Terraform and Ansible control station          | LXC      | Debian         | 10   | `10.10.10.20` |
-| `ts01`    | Former Tailscale router, unused                | VM       | Debian         | 10   | `10.10.10.21` |
 | `dc01`    | Active Directory, DNS, DHCP                    | VM       | Windows Server | 20   | `10.10.20.10` |
 | —         | Xray VPN server                                | —        | —              | 20   | `10.10.20.200` |
 | `mail01`  | hMailServer email                              | VM       | Windows Server | 20   | `10.10.20.11` |

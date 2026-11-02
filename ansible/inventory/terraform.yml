@@ -20,8 +20,6 @@ all:
               ansible_host: 10.10.60.10
             proxy01:
               ansible_host: 10.10.80.10
-            ts01:
-              ansible_host: 10.10.10.21
             voip01:
               ansible_host: 10.10.20.20
             web01:

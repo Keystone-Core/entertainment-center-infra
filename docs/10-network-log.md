@@ -12,6 +12,7 @@ The following table records each version of the log.
 | 1.1     | November 1, 2026   | Loucas Viens | Staff, rooms and telephony VLANs (30, 50, 70) merged into VLAN 20; eight VLANs reduced to five and twenty firewall rules to sixteen |
 | 1.2     | November 2, 2026   | Loucas Viens | VLANs 10, 40, 60 and 80 and their rules configured on fw01; ts01, mqtt01, proxy01 and game01 moved to their VLAN; NTP through fw01; Tailscale replaced by an Xray VPN; configuration as built recorded in section 10.3 |
 | 1.3     | November 2, 2026   | Loucas Viens | ctrl-iac moved to VLAN 10 (10.10.10.20, DNS through fw01); temporary VLAN 20 rule removed |
+| 1.4     | November 2, 2026   | Loucas Viens | DHCP relay of VLAN 40 to dc01; 10.10.20.200 (VPN) excluded from dc01's VLAN 20 pool; unused LAN rules and aliases removed; ts01 removed |
 
 ## 10.1 Addressing Plan, Equipment and Assigned Users
 
@@ -29,12 +30,21 @@ The initial plan had eight VLANs, with separate networks for the staff workstati
 
 Within VLAN 20, the addresses are divided by type of device: .10 to .99 for the servers (static addressing), .100 to .149 for the workstations and phones (DHCP reservations) and .150 to .199 for the dynamic DHCP pool.
 
-**Implementation status (version 1.3).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
+**Implementation status (version 1.4).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
 
 - **pve01** keeps its address on the cégep network (10.85.2.127, bridge vmbr0) instead of 10.10.10.10. fw01's WAN interface is also on that network and gets its address by DHCP (10.85.2.16 at the time of writing).
 - **The control station** is the container ctrl-iac (LXC 110), at 10.10.10.20 in VLAN 10 as planned. It uses fw01 (10.10.10.1) as DNS server, which also resolves the cde.lan domain. Since pve01 is on the cégep network, it reaches the Proxmox API through fw01 (section 10.3, GESTION).
 - **vmbr1 has no physical port**, so no physical device (switch, workstation, phone, ESP32) is connected yet; the VLANs only carry VMs.
-- **DHCP:** fw01's DHCP servers (IPv4 and IPv6) are disabled. dc01 does not serve DHCP yet, so the DHCP relay of VLAN 40 is not configured.
+- **DHCP:** fw01's DHCP servers (IPv4 and IPv6) are disabled; dc01 serves DHCP, authorized in Active Directory. VLAN 20 is served directly and VLAN 40 through fw01's DHCP relay. dc01's scopes still follow the eight-VLAN plan:
+
+  | Scope        | Name              | Range                      | Exclusions                  | Router, DNS                | Status                         |
+  | ------------ | ----------------- | -------------------------- | --------------------------- | -------------------------- | ------------------------------ |
+  | 10.10.20.0   | Others            | .200 to .220               | .200 (Xray VPN)             | 10.10.20.1, 10.10.20.10    | In use; differs from the plan (.150 to .199). Reservation: mail01 at .201 |
+  | 10.10.40.0   | VLAN40-Publics    | .11 to .199                | .11 to .99                  | 10.10.40.1, 10.10.40.1     | In use, as planned             |
+  | 10.10.30.0, 10.10.50.0, 10.10.70.0 | VLAN30, 50, 70 | — | — | — | Unused since v1.1 (VLANs merged into VLAN 20) |
+
+  The scopes of VLANs 30, 50 and 70 and the VLAN 20 range are J. Leclerc's to align with this plan. mail01 currently gets 10.10.20.201 by reservation instead of 10.10.20.11.
+- **Time:** dc01 syncs its clock with the cégep NTP server (192.219.64.110) through the LAN rule "Heure"; the Linux hosts use fw01.
 
 The firewall's WAN interface receives a dynamic public address from the Internet service provider. Remote access goes through an Xray VPN server at 10.10.20.200, reached through a port forwarding of TCP 443 on the WAN interface. The services published to the Internet (email and game instances) and the obtaining of certificates rely on a public domain name, whose DNS record is automatically updated (dynamic DNS) from the changing public address of the WAN interface. The dc01 server provides the domain's DNS and DHCP; it serves VLAN 20 directly, and the firewall relays the DHCP requests of VLAN 40. The public workstations (VLAN 40), however, use neither the DNS nor the authentication of the domain: they rely on the firewall's DNS resolver, and only their DHCP lease is served by dc01, through the relay.
 
@@ -46,7 +56,6 @@ The addresses in the reserved range are assigned by DHCP reservation tied to the
 | pve01   | Proxmox VE virtualization host                     | Server   | Proxmox (Debian) | 10   | 10.10.10.10 | N.-A. Anillo |
 | fw01    | pfSense (or OPNsense) firewall and router          | VM       | FreeBSD          | 10   | 10.10.10.1  | L. Viens     |
 | ctl01   | Terraform and Ansible control station              | LXC      | Debian           | 10   | 10.10.10.20 | N.-A. Anillo |
-| ts01    | Former Tailscale subnet router, unused since v1.2  | VM       | Debian           | 10   | 10.10.10.21 | L. Viens     |
 | dc01    | Active Directory Domain Services, DNS, DHCP        | VM       | Windows Server   | 20   | 10.10.20.10 | J. Leclerc   |
 | mail01  | hMailServer email                                  | VM       | Windows Server   | 20   | 10.10.20.11 | J. Leclerc   |
 | tick01  | osTicket ticket management                         | VM       | Windows Server   | 20   | 10.10.20.12 | J. Leclerc   |
@@ -168,11 +177,9 @@ The rules use the following aliases:
 | Allow         | VLAN 20    | fw01                       | 53/TCP and UDP       | DNS                                                      |
 | Allow         | VLAN 20    | fw01                       | 123/UDP              | NTP                                                      |
 | Allow         | VLAN 20    | Any                        | ICMP                 | Ping for diagnostics                                     |
-| Allow         | ctrl-iac   | Proxmox                    | 8006/TCP             | Former Proxmox API rule, unused since ctrl-iac is in VLAN 10 (v1.3) |
 | Block and log | VLAN 20    | cégep network              | All                  | No access to the cégep network                           |
-| Allow         | VLAN 20    | `NTP_CEGEP`                | 123/UDP              | Former NTP source, unused since v1.2                     |
+| Allow         | VLAN 20    | `NTP_CEGEP`                | 123/UDP              | Time for dc01 (the Linux hosts use fw01)                 |
 | Allow         | VLAN 20    | Any                        | TCP `WEB`            | Web, Internet and other VLANs (covers rule 2)            |
-| Allow         | ts01 (old address) | Any                | UDP 41641, 3478      | Former Tailscale rule, unused since v1.2                 |
 | Allow         | VLAN 20    | mqtt01                     | 8883/TCP             | Rule 3                                                   |
 | Block and log | VLAN 20    | Any                        | All                  | Everything else                                          |
 
@@ -196,6 +203,8 @@ The rules use the following aliases:
 | Allow         | VLAN 40 | game01      | TCP and UDP `PORTS_JEUX` | Rule 9  |
 | Block and log | VLAN 40 | `PRIVES`    | All                  | Rule 14, also blocks the cégep network |
 | Allow         | VLAN 40 | Any         | TCP `WEB`            | Rule 8      |
+
+DHCP relay: fw01 relays the DHCP requests of VLAN 40 to dc01 (10.10.20.10); pfSense allows the relayed traffic on its own.
 
 **OPT3 — VLAN 60 (connected devices)**
 
@@ -224,6 +233,6 @@ Compared with the policy of section 10.2, the configuration differs as follows:
 
 - DNS and NTP go to fw01's address in each VLAN instead of dc01 and the Internet; fw01 resolves names and syncs its clock with the cégep servers. The Linux hosts take their DNS server and NTP server from their gateway (Terraform and Ansible).
 - Traffic to the Internet is limited to TCP 80 and 443.
-- **Not configured yet:** rule 5 (bkp01 to pve01), rules 11 and 12 (email), rule 13 (game port forwarding, which needs the cégep's agreement since fw01's WAN is on its network) and the DHCP relay of VLAN 40.
+- **Not configured yet:** rule 5 (bkp01 to pve01), rules 11 and 12 (email), rule 13 (game port forwarding, planned once AMP runs on game01; it also needs the cégep's agreement since fw01's WAN is on its network).
 
-The rules were checked on November 2, 2026 from the hosts of each VLAN (VLAN 10 from ts01, DMZ from proxy01 and game01, IOT from mqtt01, VLAN 20 from web01) and from temporary test hosts in VLANs 10, 40, 60 and 80: every allowed flow passed and every blocked flow was blocked.
+The rules were checked on November 2, 2026 from the hosts of each VLAN (VLAN 10 from ts01, DMZ from proxy01 and game01, IOT from mqtt01, VLAN 20 from web01) and from temporary test hosts in VLANs 10, 40, 60 and 80: every allowed flow passed and every blocked flow was blocked. The DHCP of VLANs 20 (direct) and 40 (relay) was checked the same day with temporary DHCP clients, whose leases were then removed from dc01.
