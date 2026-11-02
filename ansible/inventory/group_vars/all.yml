@@ -2,7 +2,9 @@
 cde_domaine: cde.lan
 cde_fuseau: America/Toronto
 cde_ntp_serveurs:
-  - 192.219.64.110
+  # fw01 donne l'heure dans chaque VLAN (la passerelle .1) : les regles
+  # n'autorisent le NTP que vers fw01, pas vers Internet.
+  - "{{ ansible_default_ipv4.gateway }}"
 cde_dns_serveurs:
   - 10.10.20.10
 cde_utilisateur_ansible: ansible
