@@ -29,7 +29,7 @@ flowchart LR
 
 Caddy on `proxy01` handles TLS and forwards the request to Traefik on port 80, keeping the original `Host` header. Traefik picks the Ingress whose `host` matches it and sends the request to that Ingress's Service. Every service on k3s therefore shares the same upstream, and only the hostname tells them apart.
 
-Firewall rule 8 allows only `proxy01` to reach port 80 on `k3s01` (see section 10.2 of the network log). Ingresses don't need TLS: Caddy already handles it.
+Firewall rule 4 allows only `proxy01` to reach port 80 on `k3s01` from the other VLANs, and the host firewall on `k3s01` does the same inside VLAN 20 (see section 10.2 of the network log). Ingresses don't need TLS: Caddy already handles it.
 
 ## Getting a shell with kubectl
 
@@ -304,4 +304,4 @@ Start with `kubectl -n <namespace> get pods` and `kubectl -n <namespace> describ
 | `CrashLoopBackOff`                        | The application itself fails. Read `kubectl -n <namespace> logs <pod> --previous`.     |
 | `curl` returns `404 page not found`       | No Ingress matches the `Host` header, or the Service has no ready pod. Check `kubectl get ingress -A` and `kubectl -n <namespace> get endpointslices`. |
 | `curl` returns `502 Bad Gateway`          | The Service's `targetPort` doesn't match the port the container listens on.            |
-| Works with `curl`, not through `proxy01`  | Check the Caddy site block, the DNS record and firewall rule 8.                         |
+| Works with `curl`, not through `proxy01`  | Check the Caddy site block, the DNS record and firewall rule 4.                         |

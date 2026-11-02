@@ -10,7 +10,7 @@ The centre has four employees and a single site, so the infrastructure has to st
 
 - **One physical server, everything virtualized.** A single Proxmox VE host runs every service as a VM, including the firewall. The only exception is the Terraform control station, which lives in an LXC container.
 - **Infrastructure as code.** Terraform provisions the VMs, and Ansible configures them. Both run from a dedicated control station (`ctl01`).
-- **Eight segmented VLANs** behind a pfSense/OPNsense firewall with a default-deny policy. The public workstations are fully isolated from the internal network.
+- **Five segmented VLANs** behind a pfSense/OPNsense firewall with a default-deny policy. The public workstations are fully isolated from the internal network.
 - **Secure remote access** through Tailscale, with no fixed public IP needed. Web interfaces are published over HTTPS by a Caddy reverse proxy.
 - **Linux or Windows per service.** Windows Server handles the directory, email, ticketing and backups. Debian handles everything else.
 - **Connected devices.** Each team member builds an ESP32 module that talks to a TLS-encrypted Mosquitto MQTT broker.
@@ -28,7 +28,7 @@ flowchart TB
             ctl01[ctl01<br>Terraform + Ansible]
             ts01[ts01<br>Tailscale router]
         end
-        subgraph srv["VLAN 20 · Servers"]
+        subgraph srv["VLAN 20 · Internal"]
             win["dc01 · mail01 · tick01 · bkp01<br>(Windows Server)"]
             lin["voip01 · web01 · mon01 · k3s01<br>media01 · dash01 (Debian)"]
         end
@@ -42,10 +42,10 @@ flowchart TB
     end
 
     subgraph lan["Physical devices (via sw01)"]
-        staff[VLAN 30 · 4 staff PCs]
+        staff[VLAN 20 · 4 staff PCs]
         pub[VLAN 40 · 12 public PCs]
-        rooms[VLAN 50 · 2 projection PCs]
-        phones[VLAN 70 · 4 IP phones]
+        rooms[VLAN 20 · 2 projection PCs]
+        phones[VLAN 20 · 4 IP phones]
         esp[VLAN 60 · ESP32 modules]
     end
 
@@ -62,12 +62,9 @@ The internal network uses `10.10.0.0/16`. Each VLAN gets its own `/24` whose thi
 | VLAN | Name                | Subnet          | Purpose                                    |
 | ---- | ------------------- | --------------- | ------------------------------------------ |
 | 10   | Management          | `10.10.10.0/24` | Proxmox, switch, firewall, control station |
-| 20   | Servers             | `10.10.20.0/24` | Internal Linux and Windows services        |
-| 30   | Staff               | `10.10.30.0/24` | Four staff workstations                    |
+| 20   | Internal            | `10.10.20.0/24` | Servers, staff and room workstations, IP phones |
 | 40   | Public workstations | `10.10.40.0/24` | Twelve self-service gaming PCs (isolated)  |
-| 50   | Rooms               | `10.10.50.0/24` | Two projection workstations                |
 | 60   | Connected devices   | `10.10.60.0/24` | MQTT broker and ESP32 modules              |
-| 70   | Telephony           | `10.10.70.0/24` | IP phones                                  |
 | 80   | DMZ                 | `10.10.80.0/24` | Reverse proxy and game servers             |
 
 ### Hosts and services
@@ -100,11 +97,11 @@ Microsoft Defender for Endpoint protects the workstations and servers.
 - The firewall is **default-deny**: any flow not explicitly allowed is blocked and logged.
 - **Public workstations** (VLAN 40) can reach only the Internet (web), the firewall's DNS resolver and the game servers. They are blocked from every internal VLAN and don't join the domain.
 - **Connected devices** (VLAN 60) can't reach the Internet or other VLANs, except for the Netdata agents reporting to `mon01`. MQTT runs only on TLS (port 8883).
-- **Service web interfaces** are published over HTTPS by `proxy01`, and Caddy manages the certificates. The only exception is Jellyfin, which the projection PCs (VLAN 50) reach directly. The Proxmox and firewall admin interfaces are reachable only from the management VLAN.
+- **Service web interfaces** are published over HTTPS by `proxy01`, and Caddy manages the certificates. The only exception is Jellyfin, which the projection PCs reach directly inside VLAN 20. The Proxmox and firewall admin interfaces are reachable only from the management VLAN.
 - **Remote administration** goes through Tailscale. `ts01` advertises VLANs 10, 20 and 80, and Tailscale ACLs limit what each account can reach.
 - **Internet-facing services** (email and game instances) use port forwarding and dynamic DNS on the firewall's WAN address.
 
-The [network log](docs/10-network-log.md) lists every port and all 20 firewall rules.
+The [network log](docs/10-network-log.md) lists every port and all 16 firewall rules.
 
 ## Tech stack
 
