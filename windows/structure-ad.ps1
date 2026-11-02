@@ -53,11 +53,12 @@ $groupes = @(
     @{ Nom = 'GG-Polyvalent'; Description = 'Poste polyvalent et developpement web' }
 )
 
+# Noms generiques (prenoms de l'equipe), un compte par poste du personnel.
 $employes = @(
-    @{ Compte = 'gerance';    Nom = 'Gerance';    Groupe = 'GG-Gerance';    Poste = 'PC-GER-01' }
-    @{ Compte = 'reception';  Nom = 'Reception';  Groupe = 'GG-Reception';  Poste = 'PC-REC-01' }
-    @{ Compte = 'soutien';    Nom = 'Soutien';    Groupe = 'GG-Soutien';    Poste = 'PC-SUP-01' }
-    @{ Compte = 'polyvalent'; Nom = 'Polyvalent'; Groupe = 'GG-Polyvalent'; Poste = 'PC-DEV-01' }
+    @{ Compte = 'loucas';  Nom = 'Loucas';  Role = 'Gerance';                Groupe = 'GG-Gerance';    Poste = 'PC-GER-01' }
+    @{ Compte = 'nicolas'; Nom = 'Nicolas'; Role = 'Accueil et billetterie'; Groupe = 'GG-Reception';  Poste = 'PC-REC-01' }
+    @{ Compte = 'joshua';  Nom = 'Joshua';  Role = 'Soutien technique';      Groupe = 'GG-Soutien';    Poste = 'PC-SUP-01' }
+    @{ Compte = 'alexy';   Nom = 'Alexy';   Role = 'Poste polyvalent';       Groupe = 'GG-Polyvalent'; Poste = 'PC-DEV-01' }
 )
 
 $politiqueMdp = @{
@@ -126,7 +127,7 @@ foreach ($e in $employes) {
         Action "compte $($e.Compte) (desactive, mot de passe a definir)" {
             New-ADUser -Name $e.Nom -SamAccountName $e.Compte -DisplayName $e.Nom `
                 -UserPrincipalName "$($e.Compte)@$($domaine.DNSRoot)" -Path $ouEmployes `
-                -Description "Poste $($e.Poste)" -Enabled $false -ChangePasswordAtLogon $true
+                -Description "$($e.Role), poste $($e.Poste)" -Enabled $false -ChangePasswordAtLogon $true
         }
     }
     foreach ($groupe in @($e.Groupe, 'GG-Employes')) {
