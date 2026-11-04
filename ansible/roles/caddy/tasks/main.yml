@@ -86,6 +86,23 @@
     - Recharger systemd
     - Redemarrer Caddy
 
+- name: Dossier des autorites des amonts HTTPS
+  ansible.builtin.file:
+    path: /etc/caddy/ca
+    state: directory
+    mode: "0755"
+
+# Certificat public de l'autorite d'un amont HTTPS (cle `ca` d'un site).
+- name: Autorites des amonts HTTPS
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/{{ item.ca }}"
+    dest: "/etc/caddy/ca/{{ item.nom }}.pem"
+    mode: "0644"
+  loop: "{{ caddy_sites | selectattr('ca', 'defined') | list }}"
+  loop_control:
+    label: "{{ item.nom }}"
+  notify: Recharger Caddy
+
 - name: Configurer Caddy
   ansible.builtin.template:
     src: Caddyfile.j2

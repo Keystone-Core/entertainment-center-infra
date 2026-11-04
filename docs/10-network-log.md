@@ -14,6 +14,7 @@ The following table records each version of the log.
 | 1.3     | November 2, 2026   | Loucas Viens | ctrl-iac moved to VLAN 10 (10.10.10.20, DNS through fw01); temporary VLAN 20 rule removed |
 | 1.4     | November 2, 2026   | Loucas Viens | DHCP relay of VLAN 40 to dc01; 10.10.20.200 (VPN) excluded from dc01's VLAN 20 pool; unused LAN rules and aliases removed; ts01 removed |
 | 1.5     | November 2, 2026   | Loucas Viens | Staff workstations created as VMs (20101 to 20104) in VLAN 20, with their MAC addresses |
+| 1.6     | November 4, 2026   | Loucas Viens | Proxmox web interface published by Caddy (proxmox.divertissementestrie.ca, VLANs 10 and 20); DMZ rule proxy01 → Proxmox:8006; internal DNS records |
 
 ## 10.1 Addressing Plan, Equipment and Assigned Users
 
@@ -31,7 +32,7 @@ The initial plan had eight VLANs, with separate networks for the staff workstati
 
 Within VLAN 20, the addresses are divided by type of device: .10 to .99 for the servers (static addressing), .100 to .149 for the workstations and phones (DHCP reservations) and .150 to .199 for the dynamic DHCP pool.
 
-**Implementation status (version 1.5).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
+**Implementation status (version 1.6).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
 
 - **pve01** keeps its address on the cégep network (10.85.2.127, bridge vmbr0) instead of 10.10.10.10. fw01's WAN interface is also on that network and gets its address by DHCP (10.85.2.16 at the time of writing).
 - **The control station** is the container ctrl-iac (LXC 110), at 10.10.10.20 in VLAN 10 as planned. It uses fw01 (10.10.10.1) as DNS server, which also resolves the cde.lan domain. Since pve01 is on the cégep network, it reaches the Proxmox API through fw01 (section 10.3, GESTION).
@@ -232,6 +233,7 @@ The exceptions only concern the mqtt01 VM, which needs packages and the time; th
 | Action        | Source  | Destination     | Service           | Description            |
 | ------------- | ------- | --------------- | ----------------- | ---------------------- |
 | Allow         | proxy01 | `SERVICES_HTTP` | TCP `PORTS_HTTP`  | Rule 4                 |
+| Allow         | proxy01 | Proxmox         | 8006/TCP          | Proxmox web interface published by Caddy (v1.6) |
 | Allow         | VLAN 80 | mon01           | 19999/TCP         | Rule 6                 |
 | Allow         | VLAN 80 | fw01            | 53/TCP and UDP    | DNS                    |
 | Allow         | VLAN 80 | fw01            | 123/UDP           | NTP                    |
@@ -242,6 +244,7 @@ Compared with the policy of section 10.2, the configuration differs as follows:
 
 - DNS and NTP go to fw01's address in each VLAN instead of dc01 and the Internet; fw01 resolves names and syncs its clock with the cégep servers. The Linux hosts take their DNS server and NTP server from their gateway (Terraform and Ansible).
 - Traffic to the Internet is limited to TCP 80 and 443.
+- The Proxmox web interface is also published by proxy01 as `proxmox.divertissementestrie.ca`, for VLANs 10 and 20 only (Caddy answers 403 to the other networks). pve01 being on the cégep network, this needs the DMZ rule above. The name resolves to proxy01 (10.10.80.10) through a host override on fw01 and a dedicated zone on dc01.
 - **Not configured yet:** rule 5 (bkp01 to pve01), rules 11 and 12 (email), rule 13 (game port forwarding, planned once AMP runs on game01; it also needs the cégep's agreement since fw01's WAN is on its network).
 
 The rules were checked on November 2, 2026 from the hosts of each VLAN (VLAN 10 from ts01, DMZ from proxy01 and game01, IOT from mqtt01, VLAN 20 from web01) and from temporary test hosts in VLANs 10, 40, 60 and 80: every allowed flow passed and every blocked flow was blocked. The DHCP of VLANs 20 (direct) and 40 (relay) was checked the same day with temporary DHCP clients, whose leases were then removed from dc01.

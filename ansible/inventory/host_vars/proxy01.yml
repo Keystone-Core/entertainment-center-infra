@@ -1,9 +1,20 @@
 ---
 # Sites publies par Caddy, en HTTPS sur <nom>.divertissementestrie.ca.
-# L'amont doit etre autorise par la regle 4 du pare-feu (PORTS_HTTP
-# vers SERVICES_HTTP). Exemples :
+# L'amont doit etre autorise par le pare-feu (regle 4 : PORTS_HTTP vers
+# SERVICES_HTTP, ou une regle DMZ dediee). Cles optionnelles :
+#   reseaux : seuls ces reseaux ont acces (les autres recoivent 403)
+#   ca      : certificat de l'autorite d'un amont HTTPS (relatif a ansible/)
+# Exemples :
 #   - nom: netdata
 #     upstream: 10.10.20.22:19999
 #   - nom: homarr
 #     upstream: 10.10.20.41:7575
-caddy_sites: []
+caddy_sites:
+  # Interface web de Proxmox (pve, sur le reseau du cegep), pour les VLANs
+  # 10 et 20 seulement. Regle DMZ : PROXY01 vers Proxmox:8006.
+  - nom: proxmox
+    upstream: https://10.85.2.127:8006
+    ca: files/ca/proxmox.pem
+    reseaux:
+      - 10.10.10.0/24
+      - 10.10.20.0/24
