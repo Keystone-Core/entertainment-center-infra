@@ -9,6 +9,30 @@
 {% for site in caddy_sites %}
 
 {{ site.nom }}.{{ caddy_domaine }} {
+	# La DMZ ne laisse sortir que le web : Caddy ne peut pas interroger les
+	# serveurs DNS de Cloudflare (port 53) pour verifier la propagation. Il
+	# attend 30 s a la place ; Let's Encrypt verifie de son cote.
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+		propagation_delay 30s
+		propagation_timeout -1
+	}
+
+{% if site.reseaux is defined %}
+	# Seuls ces reseaux ont acces ; les autres recoivent 403.
+	@refuse not remote_ip {{ site.reseaux | join(' ') }}
+	respond @refuse 403
+
+{% endif %}
+{% if site.ca is defined %}
+	# Amont en HTTPS, verifie avec le certificat de son autorite.
+	reverse_proxy {{ site.upstream }} {
+		transport http {
+			tls_trust_pool file /etc/caddy/ca/{{ site.nom }}.pem
+		}
+	}
+{% else %}
 	reverse_proxy {{ site.upstream }}
+{% endif %}
 }
 {% endfor %}

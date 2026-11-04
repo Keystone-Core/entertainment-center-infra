@@ -53,9 +53,32 @@ The token is copied to `proxy01` on the first run. Later runs don't need it: wit
 
    Services on k3s all use the Traefik ingress as upstream (`10.10.20.31:80`); see [deploying services on k3s](deploying-services-on-k3s.md).
 
-2. Check that the firewall allows `proxy01` to reach the upstream: its address must be in `SERVICES_HTTP` and its port in `PORTS_HTTP` on fw01. Add them if needed and record the change in the network log.
-3. Make the name resolve to `proxy01` inside the centre: pfSense → *Services → DNS Resolver → Host Overrides*, host `netdata`, domain `divertissementestrie.ca`, IP `10.10.80.10`. The internal clients use fw01 as DNS server.
-4. Push, then on `ctrl-iac`: `git pull && ansible-playbook caddy.yml`. Caddy reloads and gets the certificate within a minute.
+   Two optional keys:
+
+   | Key       | Use                                                                                                          |
+   | --------- | ------------------------------------------------------------------------------------------------------------ |
+   | `reseaux` | Only these networks may open the site; Caddy answers 403 to the others                                       |
+   | `ca`      | The upstream uses HTTPS with its own certificate authority: path of that authority's public certificate, relative to `ansible/` (for example `files/ca/proxmox.pem`). Caddy verifies the upstream with it. |
+
+2. Check that the firewall allows `proxy01` to reach the upstream: its address must be in `SERVICES_HTTP` and its port in `PORTS_HTTP` on fw01, or a dedicated DMZ rule allows it. Add them if needed and record the change in the network log.
+3. Make the name resolve to `proxy01` inside the centre, on both DNS servers:
+   - **fw01** (VLAN 10, the Linux hosts): pfSense → *Services → DNS Resolver → Host Overrides*, host `netdata`, domain `divertissementestrie.ca`, IP `10.10.80.10`.
+   - **dc01** (the Windows workstations of VLAN 20): a primary zone named after the full name, holding only an A record at its root, so the rest of the public domain still resolves normally:
+
+     ```powershell
+     Add-DnsServerPrimaryZone -Name netdata.divertissementestrie.ca -ReplicationScope Domain
+     Add-DnsServerResourceRecordA -ZoneName netdata.divertissementestrie.ca -Name '@' -IPv4Address 10.10.80.10
+     ```
+
+4. Push, then on `ctrl-iac`: `git pull && ansible-playbook caddy.yml`. Caddy reloads and gets the certificate within about a minute.
+
+The DMZ only lets web traffic out, so Caddy can't query Cloudflare's name servers on port 53 to check that the challenge record has propagated. Each site therefore skips that check and waits 30 seconds instead (`propagation_delay`); Let's Encrypt checks the record on its side.
+
+## Published sites
+
+| Name                              | Upstream                    | Access            | Firewall                               |
+| --------------------------------- | --------------------------- | ----------------- | -------------------------------------- |
+| `proxmox.divertissementestrie.ca` | `https://10.85.2.127:8006` (pve, verified with its CA) | VLANs 10 and 20 | DMZ rule "Caddy vers l interface web de Proxmox" |
 
 ## Checking
 
@@ -72,7 +95,8 @@ caddy list-modules | grep cloudflare
 | ---------------------------------------- | ------------------------------------------------------------------------------------------- |
 | The playbook stops at "Verifier le jeton" | First run without `CLOUDFLARE_API_TOKEN`: load `/root/.cloudflare.env` first.               |
 | No certificate, `journalctl` shows a Cloudflare error | The token's permissions (Zone.DNS:Edit on the right zone) or its value.        |
-| The name doesn't resolve                 | The host override on pfSense, or the client doesn't use fw01 as DNS server.                  |
+| The name doesn't resolve                 | The host override on pfSense (fw01 clients) or the zone on dc01 (Windows clients).           |
+| `403`                                    | The client's network isn't in the site's `reseaux`.                                         |
 | `502 Bad Gateway`                        | The service isn't running, or the firewall blocks `proxy01` → upstream (rule 4).             |
 | Unreachable from home                    | Public access isn't set up: fw01's WAN TCP 443 already goes to the Xray VPN. Connect through the VPN. |
 
