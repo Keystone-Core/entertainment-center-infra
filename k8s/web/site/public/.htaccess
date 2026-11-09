@@ -1,0 +1,9 @@
+# Pretty URLs: every request that isn't a real file goes to index.php,
+# which routes it (/notes/3, /status...).
+RewriteEngine On
+
+# Hide dot files and the ConfigMap's internal ..data folders.
+RewriteRule (^|/)\. - [R=404,L]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L,QSA]
