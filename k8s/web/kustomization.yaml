@@ -1,0 +1,42 @@
+# Website of the Centre de divertissement de l'Estrie (Apache, PHP,
+# MariaDB, phpMyAdmin) on k3s01.
+# Apply with: kubectl apply -k k8s/web
+#
+# Needs the Secret `web-db` in the `web` namespace (see README.md).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: web
+
+resources:
+  - namespace.yaml
+  - mariadb.yaml
+  - php.yaml
+  - phpmyadmin.yaml
+
+# The site code, assets and schema are kept as plain files. Kustomize
+# turns them into ConfigMaps with a hash suffix, so changing a file rolls
+# out the pods that use it.
+configMapGenerator:
+  - name: web-public
+    files:
+      - site/public/index.php
+      - site/public/.htaccess
+      - site/public/site.css
+      - site/public/favicon.svg
+      - site/public/big-shoulders.woff2
+      - site/public/atkinson-hyperlegible-next.woff2
+  - name: web-app
+    files:
+      - site/app/core.php
+      - site/app/content.php
+      - site/app/web.php
+      - site/app/views.php
+      - site/app/layout.php
+      - site/app/public.php
+      - site/app/account.php
+      - site/app/admin.php
+      - site/app/cli.php
+  - name: mariadb-init
+    files:
+      - schema.sql

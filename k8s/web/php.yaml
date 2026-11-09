@@ -1,0 +1,147 @@
+# Apache + PHP-FPM serving the website of the Centre de divertissement de
+# l'Estrie, published by Traefik as web.cde.lan.
+#
+# Layout in the container:
+#   /var/www/html/public           web root (ConfigMap web-public)
+#   /var/www/html/app              PHP code, outside the web root (ConfigMap web-app)
+#   /var/www/html/storage/uploads  uploaded files, outside the web root (PVC uploads)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uploads
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate                  # the uploads volume is ReadWriteOnce
+  selector:
+    matchLabels:
+      app: php
+  template:
+    metadata:
+      labels:
+        app: php
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 33               # www-data in the image
+        runAsGroup: 33
+      containers:
+        - name: php
+          # v5.0.3 turns off PHP session upload progress, which blocks
+          # CVE-2026-115560. Keep it off (PHP_SESSION_UPLOAD_PROGRESS_ENABLED).
+          image: serversideup/php:8.4-fpm-apache-trixie-v5.0.3
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_HOST
+              value: mariadb
+            - name: DB_NAME
+              value: site
+            - name: DB_USER
+              value: site
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: web-db
+                  key: password
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: PMA_URL
+              value: http://pma.cde.lan/
+            # Trust X-Forwarded-For from Traefik (10.42.0.0/16), so PHP
+            # sees the real client address. The image defaults to Cloudflare.
+            - name: TRUSTED_PROXY
+              value: local
+            - name: PHP_DATE_TIMEZONE
+              value: America/Toronto
+            - name: PHP_UPLOAD_MAX_FILE_SIZE
+              value: 20M
+            - name: PHP_POST_MAX_SIZE
+              value: 25M
+            # Set to true once proxy01 serves the site over HTTPS.
+            - name: PHP_SESSION_COOKIE_SECURE
+              value: "false"
+            - name: SHOW_WELCOME_MESSAGE
+              value: "false"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 8080
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: public
+              mountPath: /var/www/html/public
+              readOnly: true
+            - name: app
+              mountPath: /var/www/html/app
+              readOnly: true
+            - name: uploads
+              mountPath: /var/www/html/storage/uploads
+      volumes:
+        - name: public
+          configMap:
+            name: web-public
+        - name: app
+          configMap:
+            name: web-app
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: uploads
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: php
+spec:
+  selector:
+    app: php
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: web.cde.lan
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: php
+                port:
+                  number: 80

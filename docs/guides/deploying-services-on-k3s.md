@@ -54,6 +54,8 @@ kubectl apply -f k8s/<service>.yaml
 
 `kubectl apply` is idempotent: running it again applies only what changed in the file.
 
+A service that needs more than manifests, such as application code or an SQL schema, gets its own folder instead: `k8s/<service>/`, with a `kustomization.yaml` that lists the manifests and turns the other files into ConfigMaps. Apply the whole folder with `kubectl apply -k k8s/<service>/`. [`k8s/web/`](../../k8s/web/) is a complete example: a PHP site with a MariaDB database, a Secret, two volumes and two Ingresses.
+
 ## Deploying a service
 
 This example deploys [`traefik/whoami`](https://hub.docker.com/r/traefik/whoami), a tiny web server that echoes the request back. It's a good way to check the whole path before deploying a real application.
@@ -147,6 +149,12 @@ The firewall only lets `proxy01` reach Traefik's port 80, so test it from `k3s01
 
 ```bash
 ssh -i ~/.ssh/ansible_cde ansible@10.10.20.31 curl -s -H 'Host: whoami.example' http://127.0.0.1/
+```
+
+Or stay on `ctrl-iac` and use HTTPS: rule 1 lets VLAN 10 reach `k3s01` on 443, where Traefik answers with its own self-signed certificate, hence `-k`:
+
+```bash
+curl -k --resolve whoami.example:443:10.10.20.31 https://whoami.example/
 ```
 
 whoami answers with the request it received. A `404 page not found` means that Traefik found no route for that hostname (see [Troubleshooting](#troubleshooting)).

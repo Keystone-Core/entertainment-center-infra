@@ -1,0 +1,69 @@
+# phpMyAdmin for the site's database, published by Traefik as pma.cde.lan.
+# Log in with the `site` account (or `root`); the passwords are in the
+# Secret web-db.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phpmyadmin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phpmyadmin
+  template:
+    metadata:
+      labels:
+        app: phpmyadmin
+    spec:
+      containers:
+        - name: phpmyadmin
+          image: phpmyadmin:5.2.3-apache
+          ports:
+            - containerPort: 80
+          env:
+            - name: PMA_HOST
+              value: mariadb
+            - name: UPLOAD_LIMIT
+              value: 20M
+            - name: TZ
+              value: America/Toronto
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phpmyadmin
+spec:
+  selector:
+    app: phpmyadmin
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: phpmyadmin
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: pma.cde.lan
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: phpmyadmin
+                port:
+                  number: 80
