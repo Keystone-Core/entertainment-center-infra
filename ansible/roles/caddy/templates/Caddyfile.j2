@@ -29,6 +29,9 @@
 	reverse_proxy {{ site.upstream }} {
 		transport http {
 			tls_trust_pool file /etc/caddy/ca/{{ site.nom }}.pem
+{% if site.nom_tls is defined %}
+			tls_server_name {{ site.nom_tls }}
+{% endif %}
 		}
 	}
 {% else %}
