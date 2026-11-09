@@ -1,0 +1,6 @@
+---
+# Lancer a part : ansible-playbook homarr.yml
+- name: Tableau de bord Homarr
+  hosts: dash01
+  roles:
+    - homarr

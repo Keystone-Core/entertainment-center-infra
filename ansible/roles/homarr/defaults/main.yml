@@ -1,0 +1,3 @@
+---
+homarr_dossier: /opt/homarr
+homarr_fuseau: "{{ cde_fuseau }}"
