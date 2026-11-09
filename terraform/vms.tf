@@ -9,6 +9,15 @@ resource "proxmox_download_file" "debian_cloud_image" {
   overwrite    = false
 }
 
+resource "proxmox_download_file" "debian12_cloud_image" {
+  node_name    = var.proxmox_node
+  datastore_id = var.datastore_files
+  content_type = "import"
+  url          = var.debian12_cloud_image_url
+  file_name    = basename(var.debian12_cloud_image_url)
+  overwrite    = false
+}
+
 resource "proxmox_virtual_environment_vm" "linux" {
   for_each = local.vms
 
@@ -44,7 +53,7 @@ resource "proxmox_virtual_environment_vm" "linux" {
   disk {
     datastore_id = var.datastore_disks
     interface    = "scsi0"
-    import_from  = proxmox_download_file.debian_cloud_image.id
+    import_from  = try(each.value.debian, 13) == 12 ? proxmox_download_file.debian12_cloud_image.id : proxmox_download_file.debian_cloud_image.id
     size         = each.value.disk
     discard      = "on"
     iothread     = true
