@@ -82,7 +82,6 @@ Veeam backs up `tick01` every night, so restoring the VM is the normal way back.
 As of November 9, 2026:
 
 - `tick01` is managed by hand and isn't in the Ansible inventory, since the base role would change its SSH settings and update its packages. It has no QEMU guest agent.
-- The crontab of `www-data` has the `cron.php` line twice, so the job runs twice every 5 minutes.
 - `alerts@cde.lan` and `noreply@cde.lan` have no mailbox on `mail01`. The closest one is `alertes@cde.lan`.
 - osTicket runs over plain HTTP and isn't published through Caddy yet, although the firewall already allows `proxy01` to reach it (rule 4).
 - `mail01` isn't joined to the domain, and TLS (port 993) isn't in use.
