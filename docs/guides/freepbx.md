@@ -50,7 +50,7 @@ Read one with `cat` on `ctrl-iac`, and never paste it in a chat or a commit. The
 
 | Who          | Extension | Device                                   | Server            |
 | ------------ | --------- | ---------------------------------------- | ----------------- |
-| Reception    | 102       | IP phone plugged into pve (VLAN 20)      | `10.10.20.20`     |
+| Reception    | 102       | Cisco SPA303, plugged into pve (VLAN 20) | `10.10.20.20`     |
 | Loucas       | 101       | Softphone on his PC, through Xray        | `10.85.2.16`      |
 | Nicolas      | 102       | Softphone on his PC, through Xray        | `10.85.2.16`      |
 | Joshua       | 103       | Softphone on his PC, through Xray        | `10.85.2.16`      |
@@ -60,7 +60,17 @@ Every device uses port `5060` over UDP, the extension number as user and authent
 
 ### Desk phone
 
-The phone is in VLAN 20, next to `voip01`: it doesn't go through fw01. It's plugged into a port of pve that belongs to `vmbr1`, with its own power adapter or a PoE injector (pve's ports don't supply power). Its address is `10.10.20.122` (TEL-02), gateway `10.10.20.1`, DNS `10.10.20.10`.
+TEL-02, the reception's Cisco SPA303 (MAC `38:1c:1a:b4:e2:56`), is plugged straight into pve's port `nic0`, which belongs to `vmbr1`. It's in VLAN 20 next to `voip01` and doesn't go through fw01. It has its own power adapter: pve's ports don't supply power.
+
+| Setting | Value |
+| --- | --- |
+| Address | `10.10.20.122` fixed, mask `255.255.255.0`, gateway `10.10.20.1` |
+| DNS and NTP | `10.10.20.1` (fw01), time zone GMT-5 with daylight saving time |
+| Line 1 | Server `10.10.20.20`, user and auth ID `102`, display name `Accueil`, voicemail `*97` |
+| Dial plan | `(*xx\|[1-6]xx\|xx.)`: the `*` codes and the extensions and ring group dial without waiting |
+| Web page | `http://10.10.20.122/admin/advanced`, from VLAN 20 (fw01 blocks HTTP from VLAN 10). User `admin`, password in `/root/.cde-secrets/voip01/telephone-102-admin` |
+
+The phone was set up without touching its keypad: it downloads a settings file when you open `http://<phone>/admin/resync?http://<server>:<port>/<file>.xml`. The file is a `<flat-profile>` whose elements are the names on the web page, with `_1_` for line 1: `Proxy_1_`, `User_ID_1_`, `Password_1_`, `Use_Auth_ID_1_`, `Auth_ID_1_`, `Display_Name_1_`, `Dial_Plan_1_`, `Voice_Mail_Number`, `Connection_Type`, `Static_IP`, `NetMask`, `Gateway`, `Primary_DNS`, `Primary_NTP_Server`, `Time_Zone`, `Admin_Passwd`. Serve it from a VLAN 20 host for a minute (`python3 -m http.server`), then delete it: it contains the passwords. After a factory reset (keypad `****`, then `73738#`), the phone takes its address by DHCP; the settings file sets it back.
 
 ### Softphones on the PCs
 

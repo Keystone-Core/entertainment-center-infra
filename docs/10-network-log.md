@@ -18,6 +18,7 @@ The following table records each version of the log.
 | 1.7     | November 9, 2026   | Alexy Després | voip01 rebuilt on Debian 12 and running FreePBX 17; its web interface over HTTPS from VLAN 10; host firewall on voip01 |
 | 1.8     | November 9, 2026   | Loucas Viens | Log compared with every VM and with fw01: mail01, tick01, veeam-worker, MQTT without TLS, VPN not deployed, Veeam and MQTT test rules on fw01, workstations joined to the domain |
 | 1.9     | November 9, 2026   | Loucas Viens | pfSense, FreePBX, Veeam, osTicket, Homarr, the website and phpMyAdmin published by Caddy for VLANs 10 and 20; alias SERVICES_HTTPS and its DMZ rule; internal DNS records |
+| 1.10    | November 11, 2026  | Alexy Després | pve's port nic0 added to vmbr1 for the reception's IP phone (TEL-02, Cisco SPA303, 10.10.20.122); fw01 forwards SIP and RTP from the Xray VPN exit (10.85.2.124) to voip01 for the PCs' softphones, which wait for the Xray server to relay UDP |
 
 ## 10.1 Addressing Plan, Equipment and Assigned Users
 
@@ -39,7 +40,7 @@ Within VLAN 20, the addresses are divided by type of device: .10 to .99 for the 
 
 - **pve01** keeps its address on the cégep network (10.85.2.127, bridge vmbr0) instead of 10.10.10.10. fw01's WAN interface is also on that network and gets its address by DHCP (10.85.2.16 at the time of writing).
 - **The control station** is the container ctrl-iac (LXC 110), at 10.10.10.20 in VLAN 10 as planned. It uses fw01 (10.10.10.1) as DNS server, which also resolves the cde.lan domain. Since pve01 is on the cégep network, it reaches the Proxmox API through fw01 (section 10.3, GESTION).
-- **vmbr1 has no physical port**, so no physical device (switch, workstation, phone, ESP32) is connected yet; the VLANs only carry VMs.
+- **vmbr1 has one physical port, nic0**, with the reception's IP phone (TEL-02, Cisco SPA303) plugged in directly; no switch is connected yet, and the other VLANs only carry VMs. TEL-02 has a fixed address (10.10.20.122) instead of a DHCP reservation.
 - **Staff workstations** are Windows 11 VMs on pve01, in VLAN 20 (untagged on vmbr1), created by [`windows/creer-postes.sh`](../windows/creer-postes.sh) and joined to the `cde.lan` domain. Their MAC addresses are the ones to use for the DHCP reservations once dc01's VLAN 20 scope covers .101 to .104; until then they get an address from the current pool.
 
   | Workstation | VM    | Account   | MAC address         | Current address |
