@@ -12,11 +12,14 @@ freepbx_secrets: /root/.cde-secrets/voip01
 freepbx_admin: admin
 
 # Postes du personnel (TEL-01 a TEL-04 du journal reseau), avec messagerie.
+# `appareils` : nombre d'appareils connectes en meme temps sur le poste (1
+# par defaut). Le 102 sonne sur le telephone de l'accueil et sur le PC.
 freepbx_postes:
   - numero: 101
     nom: Gérance
   - numero: 102
     nom: Accueil
+    appareils: 2
   - numero: 103
     nom: Soutien technique
   - numero: 104
@@ -37,8 +40,16 @@ freepbx_reseaux_ssh:
   - 10.10.10.0/24        # VLAN 10, gestion
 freepbx_reseaux_sip:
   - 10.10.20.0/24        # VLAN 20, telephones IP
+  - 10.85.2.124/32       # Sortie du VPN Xray : softphones des PC, par fw01
 freepbx_reseaux_web:
   - 10.10.10.0/24        # VLAN 10 (HTTPS, regle 1)
   - 10.10.80.10/32       # proxy01, pour une publication par Caddy
 freepbx_rtp_debut: 10000
 freepbx_rtp_fin: 20000
+
+# Les PC passent par le VPN Xray et joignent voip01 par une redirection de
+# ports sur l'adresse WAN de fw01. Asterisk annonce cette adresse aux
+# appareils hors des reseaux locaux, et 10.10.20.20 aux autres.
+freepbx_adresse_externe: 10.85.2.16
+freepbx_reseaux_locaux:
+  - 10.10.0.0/16
