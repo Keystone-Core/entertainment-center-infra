@@ -38,4 +38,17 @@ terraform apply
 
 `terraform.tfvars` holds the environment values and isn't committed. Copy it from [`terraform.tfvars.example`](terraform.tfvars.example) the first time.
 
+## Logging in to the VMs
+
+cloud-init creates the `ansible` account with the keys in `ssh_public_keys` and no password. The base Ansible role then gives `root` and `ansible` the same password on every Linux VM, for the Proxmox console only: SSH accepts keys only. The password is in `/root/.cde-secrets/linux/mot-de-passe` on `ctrl-iac` (mode `600`), never in the repository.
+
+The password isn't set through Terraform on purpose. Changing a VM's cloud-init settings gives it a new instance ID, and at its next boot cloud-init runs again and regenerates the SSH host keys.
+
+To change the password, write the new one in the file, then run only that task on every host from `ctrl-iac`:
+
+```bash
+cd /root/entertainment-center-infra/ansible
+ansible-playbook site.yml --tags mots-de-passe
+```
+
 The state file is kept only on `ctrl-iac`, so make sure LXC 110 is included in the Proxmox backup jobs.

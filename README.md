@@ -99,6 +99,7 @@ Microsoft Defender for Endpoint protects the workstations and servers.
 - **Public workstations** (VLAN 40) can reach only the Internet (web), the firewall's DNS resolver and the game servers. They are blocked from every internal VLAN and don't join the domain.
 - **Connected devices** (VLAN 60) can't reach the Internet or other VLANs, except for the Netdata agents reporting to `mon01`. MQTT runs only on TLS (port 8883).
 - **Service web interfaces** are published over HTTPS by `proxy01`, and Caddy manages the certificates. The only exception is Jellyfin, which the projection PCs reach directly inside VLAN 20. The Proxmox and firewall admin interfaces are reachable only from the management VLAN.
+- **Linux servers** accept SSH keys only. Their `root` and `ansible` accounts share one password, which works only on the Proxmox console.
 - **Remote administration** goes through the Xray VPN server (`10.10.20.200`). The firewall forwards TCP 443 on its WAN address to it, and nothing else of the internal network is published.
 - **Internet-facing services** (VPN, email and game instances) use port forwarding and dynamic DNS on the firewall's WAN address.
 
