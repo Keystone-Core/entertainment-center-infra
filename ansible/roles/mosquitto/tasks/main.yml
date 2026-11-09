@@ -1,0 +1,45 @@
+---
+- name: Installer Mosquitto
+  ansible.builtin.apt:
+    name:
+      - mosquitto
+      - mosquitto-clients
+    state: present
+
+- name: Configurer le courtier
+  ansible.builtin.template:
+    src: cde.conf.j2
+    dest: /etc/mosquitto/conf.d/cde.conf
+    mode: "0644"
+  notify: Redemarrer mosquitto
+
+- name: Liste des utilisateurs (secret)
+  ansible.builtin.template:
+    src: passwd.clear.j2
+    dest: /etc/mosquitto/passwd.clear
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  diff: false
+  notify:
+    - Generer les mots de passe mosquitto
+    - Redemarrer mosquitto
+
+- name: Droits d'acces (ACL)
+  ansible.builtin.template:
+    src: acl.j2
+    dest: /etc/mosquitto/acl
+    owner: mosquitto
+    group: mosquitto
+    mode: "0600"
+  notify: Redemarrer mosquitto
+
+- name: Appliquer les changements avant de demarrer
+  ansible.builtin.meta: flush_handlers
+
+- name: Mosquitto demarre et active
+  ansible.builtin.service:
+    name: mosquitto
+    state: started
+    enabled: true

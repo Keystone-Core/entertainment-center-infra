@@ -11,9 +11,9 @@ The centre has four employees and a single site, so the infrastructure has to st
 - **One physical server, everything virtualized.** A single Proxmox VE host runs every service as a VM, including the firewall. The only exception is the Terraform control station, which lives in an LXC container.
 - **Infrastructure as code.** Terraform provisions the VMs, and Ansible configures them. Both run from a dedicated control station (`ctl01`).
 - **Five segmented VLANs** behind a pfSense/OPNsense firewall with a default-deny policy. The public workstations are fully isolated from the internal network.
-- **Secure remote access** through an Xray VPN, published on a single port of the firewall. Web interfaces are published over HTTPS by a Caddy reverse proxy.
-- **Linux or Windows per service.** Windows Server handles the directory, email, ticketing and backups. Debian handles everything else.
-- **Connected devices.** Each team member builds an ESP32 module that talks to a TLS-encrypted Mosquitto MQTT broker.
+- **Secure remote access** planned through an Xray VPN, published on a single port of the firewall. Web interfaces are published over HTTPS by a Caddy reverse proxy.
+- **Linux or Windows per service.** Windows Server handles the directory, email and backups. Debian handles everything else.
+- **Connected devices.** Each team member builds an ESP32 module that talks to a Mosquitto MQTT broker.
 
 ## Architecture
 
@@ -28,9 +28,9 @@ flowchart TB
             ctl01[ctl01<br>Terraform + Ansible]
         end
         subgraph srv["VLAN 20 · Internal"]
-            win["dc01 · mail01 · tick01 · bkp01<br>(Windows Server)"]
-            lin["voip01 · web01 · mon01 · k3s01<br>media01 · dash01 (Debian)"]
-            vpn[Xray VPN<br>10.10.20.200]
+            win["dc01 · mail01 · bkp01<br>(Windows Server)"]
+            lin["tick01 · voip01 · web01 · mon01<br>k3s01 · media01 · dash01 (Debian)"]
+            vpn[Xray VPN, not deployed yet<br>10.10.20.200]
         end
         subgraph iot["VLAN 60 · Connected devices"]
             mqtt01[mqtt01<br>Mosquitto]
@@ -77,33 +77,34 @@ The internal network uses `10.10.0.0/16`. Each VLAN gets its own `/24` whose thi
 | `fw01`    | pfSense/OPNsense firewall and router           | VM       | FreeBSD        | 10   | `10.10.10.1`  |
 | `ctl01`   | Terraform and Ansible control station          | LXC      | Debian         | 10   | `10.10.10.20` |
 | `dc01`    | Active Directory, DNS, DHCP                    | VM       | Windows Server | 20   | `10.10.20.10` |
-| —         | Xray VPN server                                | —        | —              | 20   | `10.10.20.200` |
-| `mail01`  | hMailServer email                              | VM       | Windows Server | 20   | `10.10.20.11` |
-| `tick01`  | osTicket help desk                             | VM       | Windows Server | 20   | `10.10.20.12` |
+| —         | Xray VPN server (not deployed yet)             | —        | —              | 20   | `10.10.20.200` |
+| `mail01`  | hMailServer email                              | VM       | Windows Server | 20   | `10.10.20.201` |
+| `tick01`  | osTicket help desk                             | VM       | Debian         | 20   | `10.10.20.12` |
 | `bkp01`   | Veeam Backup & Replication                     | VM       | Windows Server | 20   | `10.10.20.13` |
+| `veeam-worker` | Veeam worker for the Proxmox backups      | VM       | Linux          | 20   | `10.10.20.14` |
 | `voip01`  | FreePBX IP telephony (Asterisk)                | VM       | Debian         | 20   | `10.10.20.20` |
 | `web01`   | LAMP web development server                    | VM       | Debian         | 20   | `10.10.20.21` |
 | `mon01`   | Netdata monitoring                             | VM       | Debian         | 20   | `10.10.20.22` |
 | `k3s01`   | Kubernetes (k3s)                               | VM       | Debian         | 20   | `10.10.20.31` |
 | `media01` | Jellyfin, Radarr, Sonarr, Prowlarr, qBittorrent | VM       | Debian         | 20   | `10.10.20.40` |
 | `dash01`  | Homarr dashboard                               | VM       | Debian         | 20   | `10.10.20.41` |
-| `mqtt01`  | Mosquitto MQTT broker (TLS)                    | VM       | Debian         | 60   | `10.10.60.10` |
+| `mqtt01`  | Mosquitto MQTT broker                          | VM       | Debian         | 60   | `10.10.60.10` |
 | `proxy01` | Caddy reverse proxy (HTTPS)                    | VM       | Debian         | 80   | `10.10.80.10` |
 | `game01`  | AMP game server panel                          | VM       | Debian         | 80   | `10.10.80.20` |
 
-Microsoft Defender for Endpoint protects the workstations and servers.
+Microsoft Defender Antivirus, managed by a domain GPO, protects the staff workstations and the domain controller. The four staff workstations are Windows 11 VMs joined to the domain.
 
 ### Security
 
 - The firewall is **default-deny**: any flow not explicitly allowed is blocked and logged.
 - **Public workstations** (VLAN 40) can reach only the Internet (web), the firewall's DNS resolver and the game servers. They are blocked from every internal VLAN and don't join the domain.
-- **Connected devices** (VLAN 60) can't reach the Internet or other VLANs, except for the Netdata agents reporting to `mon01`. MQTT runs only on TLS (port 8883).
+- **Connected devices** (VLAN 60) can't reach the Internet or other VLANs, except for the Netdata agents reporting to `mon01`. MQTT runs on port 1883 for now; TLS on 8883 is still to be done.
 - **Service web interfaces** are published over HTTPS by `proxy01`, and Caddy manages the certificates. The only exception is Jellyfin, which the projection PCs reach directly inside VLAN 20. The Proxmox and firewall admin interfaces are reachable only from the management VLAN.
 - **Linux servers** accept SSH keys only. Their `root` and `ansible` accounts share one password, which works only on the Proxmox console.
-- **Remote administration** goes through the Xray VPN server (`10.10.20.200`). The firewall forwards TCP 443 on its WAN address to it, and nothing else of the internal network is published.
+- **Remote administration** is planned through the Xray VPN server (`10.10.20.200`), which isn't deployed yet. The firewall forwards TCP 443 on its WAN address to it, and nothing else of the internal network is published.
 - **Internet-facing services** (VPN, email and game instances) use port forwarding and dynamic DNS on the firewall's WAN address.
 
-The [network log](docs/10-network-log.md) lists every port and all 16 firewall rules.
+The [network log](docs/10-network-log.md) lists every port, the 16 rules of the firewall policy and the configuration as built.
 
 ## Tech stack
 
@@ -113,7 +114,7 @@ The [network log](docs/10-network-log.md) lists every port and all 16 firewall r
 | Provisioning         | Terraform                                                         |
 | Configuration        | Ansible playbooks, plus one automation script per team member     |
 | Orchestration        | Kubernetes (k3s)                                                  |
-| Network and security | pfSense/OPNsense, VLANs, Xray VPN, Caddy, Defender for Endpoint   |
+| Network and security | pfSense/OPNsense, VLANs, Xray VPN, Caddy, Microsoft Defender      |
 | Directory            | Active Directory Domain Services (DNS, DHCP)                      |
 | Communication        | hMailServer (email), FreePBX (VoIP)                               |
 | Operations           | osTicket, Veeam Backup & Replication, Netdata, Homarr             |
@@ -122,7 +123,7 @@ The [network log](docs/10-network-log.md) lists every port and all 16 firewall r
 
 ## Roadmap
 
-The project is in the **planning phase**. Implementation runs from week 6 to week 15 (September 28 to December 4, 2026), and the final deadline is December 11, 2026. The infrastructure code and scripts will be added to this repository as each work package is completed.
+The project is in the **implementation phase**, which runs from week 6 to week 15 (September 28 to December 4, 2026). The final deadline is December 11, 2026.
 
 | Weeks     | Work package                                                     |
 | --------- | ---------------------------------------------------------------- |
@@ -135,11 +136,24 @@ The project is in the **planning phase**. Implementation runs from week 6 to wee
 
 The critical path is infrastructure, then security, then services, then the media stack/Homarr/AMP, then testing: 10 weeks with no slack.
 
+### Status (November 9, 2026)
+
+| Work package          | State                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| Base infrastructure   | Done: Proxmox, VLANs, Terraform, Ansible and k3s                                            |
+| Security              | Firewall, rules and Caddy in service. The Xray VPN isn't deployed yet                       |
+| Linux services        | FreePBX in service, and the centre's website on k3s. Netdata not installed yet              |
+| Windows services      | Active Directory, DNS, DHCP, hMailServer, Veeam and Defender in service; osTicket runs on Debian |
+| MQTT and ESP32        | Broker in service without TLS. No module connected yet                                      |
+| Automation scripts    | Veeam monitoring (T5.3) in service. The other three aren't in the repository yet            |
+| Media, Homarr and AMP | Homarr in service. Jellyfin, the \*arr suite and AMP not installed yet                      |
+| Testing               | To come, weeks 14 and 15                                                                    |
+
 ## Documentation
 
-The project planning is in [`docs/`](docs/README.md). It covers the management plan, functional specification, risk analysis (FMECA), work breakdown, budgets, schedule (with the PERT chart) and the [network log](docs/10-network-log.md). The detailed figures (FMECA table, task table, budgets, Gantt chart and S-curve) are in the `Planification_calculs.xlsx` workbook, which isn't in this repository. The network log is the reference for the network's configuration and is updated with every change.
+The project planning is in [`docs/`](docs/README.md). It covers the management plan, functional specification, risk analysis (FMECA), work breakdown, budgets, schedule (with the PERT chart) and the [network log](docs/10-network-log.md). The detailed figures (FMECA table, task table, budgets, Gantt chart and S-curve) are in the [`Planification_calculs.xlsx`](docs/originals/Planification_calculs.xlsx) workbook. The network log is the reference for the network's configuration and is updated with every change.
 
-Operating guides are in [`docs/guides/`](docs/guides/), starting with [deploying services on k3s](docs/guides/deploying-services-on-k3s.md).
+Operating guides are in [`docs/guides/`](docs/guides/), listed in the [documentation index](docs/README.md#guides).
 
 ## Team
 

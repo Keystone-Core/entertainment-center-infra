@@ -9,7 +9,7 @@ cde.lan
 └── CDE
     ├── Employes     loucas, nicolas, joshua, alexy   ← GPO "CDE - Verrouillage de session"
     ├── Groupes      GG-Employes, GG-Gerance, GG-Reception, GG-Soutien, GG-Polyvalent
-    ├── Serveurs     Windows member servers (mail01, tick01, bkp01)
+    ├── Serveurs     Windows member servers (mail01, bkp01), none joined yet
     └── Postes
         ├── Personnel   PC-GER-01, PC-REC-01, PC-SUP-01, PC-DEV-01
         └── Salles      PC-SALLE-1, PC-SALLE-2
@@ -29,6 +29,8 @@ The public workstations (VLAN 40) don't join the domain (network log, section 10
 **Domain password policy:** 12 characters minimum, complexity on, last 10 passwords remembered, expiry after 180 days, account locked for 15 minutes after 5 failed attempts.
 
 **GPO "CDE - Verrouillage de session"** (linked to `Employes`): the screen locks after 10 minutes of inactivity and asks for the password.
+
+**GPO "CDE - Microsoft Defender Antivirus"** (linked to `CDE` and `Domain Controllers`, task T4.5): manages Defender without Defender for Endpoint licences. Real-time protection, a daily quick scan at 2:00, cloud protection and blocking of dangerous websites. Computer settings only apply to machines under those OUs, so a workstation left in the default `Computers` container doesn't get it. It is created by [`windows/gpo-defender.ps1`](../../windows/gpo-defender.ps1), which works like `structure-ad.ps1`.
 
 ## Running the script
 
@@ -85,10 +87,10 @@ Add-Computer -DomainName cde.lan -OUPath 'OU=Serveurs,OU=CDE,DC=cde,DC=lan' -Cre
 Add-Computer -DomainName cde.lan -NewName PC-GER-01 -OUPath 'OU=Personnel,OU=Postes,OU=CDE,DC=cde,DC=lan' -Credential (Get-Credential) -Restart
 ```
 
-## Status (November 2, 2026)
+## Status (November 9, 2026)
 
-- Structure, accounts, password policy and GPO: created and checked; a second run of the script changes nothing.
-- **Accounts:** disabled until an administrator activates them.
-- **Member servers:** none yet. `mail01` (VM 103) still has to join the domain (J. Leclerc); `tick01` and `bkp01` don't exist yet.
-- **Workstations:** the four VMs exist (20101 to 20104), off and without Windows: a Windows 11 ISO has to be uploaded first. Physical workstations can't connect until a physical port is added to `vmbr1` (network log, section 10.1).
-- The service account `svc-dhcp` stays in the default `Users` container.
+- Structure, accounts, password policy and GPOs: created and checked; a further run of the scripts changes nothing.
+- **Accounts:** the four employee accounts are active.
+- **Member servers:** none yet. `mail01` (VM 103) and `bkp01` (VM 2013) are still in a workgroup (J. Leclerc). `tick01` runs Debian and doesn't join the domain.
+- **Workstations:** the four VMs run Windows 11, are joined to the domain and are in `Postes/Personnel`. They have no QEMU guest agent, so Proxmox can't query them. Physical workstations can't connect until a physical port is added to `vmbr1` (network log, section 10.1).
+- **`dc01`:** OpenSSH and WinRM are running. The service account `svc-dhcp` stays in the default `Users` container.

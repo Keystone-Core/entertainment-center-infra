@@ -1,0 +1,47 @@
+---
+- name: Installer Docker
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - docker-compose
+    state: present
+
+- name: Service Docker actif au demarrage
+  ansible.builtin.service:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Dossiers de Homarr
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ homarr_dossier }}"
+    - "{{ homarr_dossier }}/appdata"
+
+- name: Fichier Compose
+  ansible.builtin.copy:
+    src: docker-compose.yml
+    dest: "{{ homarr_dossier }}/docker-compose.yml"
+    mode: "0644"
+
+# La cle chiffre les donnees de Homarr : generee une seule fois, jamais
+# dans le depot. La remplacer rendrait les donnees existantes illisibles.
+- name: Cle de chiffrement et fuseau horaire
+  ansible.builtin.shell: |
+    umask 077
+    printf 'SECRET_ENCRYPTION_KEY=%s\nTZ=%s\n' "$(openssl rand -hex 32)" "{{ homarr_fuseau }}" > .env
+  args:
+    chdir: "{{ homarr_dossier }}"
+    creates: "{{ homarr_dossier }}/.env"
+  no_log: true
+
+# Ne recree le conteneur que si le fichier Compose a change.
+- name: Demarrer Homarr
+  ansible.builtin.command: docker-compose up -d
+  args:
+    chdir: "{{ homarr_dossier }}"
+  register: homarr_compose
+  changed_when: "'Running' not in homarr_compose.stderr"

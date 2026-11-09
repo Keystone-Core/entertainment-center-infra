@@ -63,8 +63,8 @@ locals {
       description = "Homarr dashboard"
       ip          = "10.10.20.41"
       planned     = "10.10.20.41 (VLAN 20)"
-      cores       = 1
-      memory      = 1024
+      cores       = 2
+      memory      = 2048
       disk        = 8
     }
     mqtt01 = {

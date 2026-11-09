@@ -51,4 +51,6 @@ cd /root/entertainment-center-infra/ansible
 ansible-playbook site.yml --tags mots-de-passe
 ```
 
-The state file is kept only on `ctrl-iac`, so make sure LXC 110 is included in the Proxmox backup jobs.
+The state file is kept only on `ctrl-iac`, so LXC 110 must be backed up. As of November 9, 2026, it isn't: Proxmox has no backup job and Veeam only covers `dc01`, `mail01` and `tick01`.
+
+Terraform manages the Linux VMs of [`hosts.tf`](hosts.tf) and `fw01`. The other VMs were created by hand or by a script: see the [Proxmox host guide](../docs/guides/proxmox-host.md).

@@ -1,0 +1,8 @@
+---
+mosquitto_utilisateurs:
+  - nom: admin
+    mot_de_passe: "{{ vault_mqtt_admin }}"
+  - nom: esp32
+    mot_de_passe: "{{ vault_mqtt_esp32 }}"
+  - nom: tableau
+    mot_de_passe: "{{ vault_mqtt_tableau }}"
