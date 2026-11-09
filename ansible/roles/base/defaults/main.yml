@@ -7,3 +7,9 @@ base_paquets:
   - ca-certificates
   - unattended-upgrades
 base_durcir_ssh: true
+# Mot de passe commun de root et de l'utilisateur ansible, pour la console
+# Proxmox. Le fichier est sur le poste de controle, jamais dans le depot.
+base_fichier_mot_de_passe: /root/.cde-secrets/linux/mot-de-passe
+base_comptes_mot_de_passe:
+  - root
+  - "{{ cde_utilisateur_ansible }}"

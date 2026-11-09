@@ -58,6 +58,20 @@
     user: "{{ cde_utilisateur_ansible }}"
     key: "{{ cde_cle_publique_ansible }}"
 
+# Pour la console Proxmox seulement : SSH refuse les mots de passe. Le sel
+# vient du nom de l'hote et du compte, donc le meme mot de passe donne le
+# meme hache et un autre passage ne change rien. Sans le fichier sur le
+# poste de controle, les comptes restent verrouilles.
+- name: Mot de passe commun de root et ansible
+  ansible.builtin.user:
+    name: "{{ item }}"
+    password: "{{ lookup('ansible.builtin.file', base_fichier_mot_de_passe) | password_hash('sha512', ((inventory_hostname ~ item) | hash('sha256'))[:16]) }}"
+    update_password: always
+  loop: "{{ base_comptes_mot_de_passe }}"
+  no_log: true
+  when: base_fichier_mot_de_passe is file
+  tags: mots-de-passe
+
 - name: Durcir SSH (pas de root, pas de mot de passe)
   ansible.builtin.copy:
     dest: /etc/ssh/sshd_config.d/10-cde.conf
