@@ -60,7 +60,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
             - name: PMA_URL
-              value: http://pma.cde.lan/
+              value: https://phpmyadmin.divertissementestrie.ca/
             # Trust X-Forwarded-For from Traefik (10.42.0.0/16), so PHP
             # sees the real client address. The image defaults to Cloudflare.
             - name: TRUSTED_PROXY
@@ -71,9 +71,9 @@ spec:
               value: 20M
             - name: PHP_POST_MAX_SIZE
               value: 25M
-            # Set to true once proxy01 serves the site over HTTPS.
+            # proxy01 serves the site over HTTPS.
             - name: PHP_SESSION_COOKIE_SECURE
-              value: "false"
+              value: "true"
             - name: SHOW_WELCOME_MESSAGE
               value: "false"
           securityContext:
@@ -135,6 +135,16 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
+    - host: www.divertissementestrie.ca
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: php
+                port:
+                  number: 80
     - host: web.cde.lan
       http:
         paths:
