@@ -54,3 +54,4 @@ Techniques de l'informatique (Computer Science Technology)
 - [Deploying Services on k3s](guides/deploying-services-on-k3s.md): running a service on the `k3s01` cluster and publishing it over HTTPS through `proxy01`
 - [Publishing Services with Caddy](guides/publishing-services-with-caddy.md): setting up `proxy01`, its Cloudflare token, and publishing a service over HTTPS
 - [Active Directory](guides/active-directory.md): structure of the `cde.lan` domain, the `structure-ad.ps1` script, activating accounts and joining machines
+- [FreePBX Telephony](guides/freepbx.md): the phone system on `voip01`, its extensions and passwords, setting up a phone, and running the `freepbx` role

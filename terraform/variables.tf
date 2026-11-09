@@ -21,6 +21,15 @@ variable "debian_cloud_image_url" {
   default     = "https://cloud.debian.org/images/cloud/trixie/20261001-2618/debian-13-genericcloud-amd64-20261001-2618.qcow2"
 }
 
+# The "generic" image, not "genericcloud": on Debian 12, the cloud kernel
+# doesn't see the cloud-init drive that Proxmox attaches, so cloud-init
+# never runs (no hostname, no address, no SSH key).
+variable "debian12_cloud_image_url" {
+  description = "Debian 12 image, for the hosts that set `debian = 12` (FreePBX 17 only supports Debian 12). Pinned to a dated build."
+  type        = string
+  default     = "https://cloud.debian.org/images/cloud/bookworm/20261026-2643/debian-12-generic-amd64-20261026-2643.qcow2"
+}
+
 variable "lan_bridge" {
   description = "Proxmox bridge behind the firewall's LAN interface."
   type        = string

@@ -81,7 +81,7 @@ The internal network uses `10.10.0.0/16`. Each VLAN gets its own `/24` whose thi
 | `mail01`  | hMailServer email                              | VM       | Windows Server | 20   | `10.10.20.11` |
 | `tick01`  | osTicket help desk                             | VM       | Windows Server | 20   | `10.10.20.12` |
 | `bkp01`   | Veeam Backup & Replication                     | VM       | Windows Server | 20   | `10.10.20.13` |
-| `voip01`  | Asterisk IP telephony                          | VM       | Debian         | 20   | `10.10.20.20` |
+| `voip01`  | FreePBX IP telephony (Asterisk)                | VM       | Debian         | 20   | `10.10.20.20` |
 | `web01`   | LAMP web development server                    | VM       | Debian         | 20   | `10.10.20.21` |
 | `mon01`   | Netdata monitoring                             | VM       | Debian         | 20   | `10.10.20.22` |
 | `k3s01`   | Kubernetes (k3s)                               | VM       | Debian         | 20   | `10.10.20.31` |
@@ -114,7 +114,7 @@ The [network log](docs/10-network-log.md) lists every port and all 16 firewall r
 | Orchestration        | Kubernetes (k3s)                                                  |
 | Network and security | pfSense/OPNsense, VLANs, Xray VPN, Caddy, Defender for Endpoint   |
 | Directory            | Active Directory Domain Services (DNS, DHCP)                      |
-| Communication        | hMailServer (email), Asterisk (VoIP)                              |
+| Communication        | hMailServer (email), FreePBX (VoIP)                               |
 | Operations           | osTicket, Veeam Backup & Replication, Netdata, Homarr             |
 | IoT                  | Mosquitto MQTT, ESP32                                             |
 | Entertainment        | Jellyfin, \*arr suite, qBittorrent, AMP game server panel         |
@@ -145,7 +145,7 @@ Operating guides are in [`docs/guides/`](docs/guides/), starting with [deploying
 | Member               | Main responsibilities                                                                  |
 | -------------------- | -------------------------------------------------------------------------------------- |
 | Nicolas-André Anillo | Ansible automation, IP addressing and VLANs, firewall rules, MQTT, Jellyfin            |
-| Alexy Després        | Terraform, Kubernetes (k3s), Asterisk VoIP, LAMP web server, Netdata                   |
+| Alexy Després        | Terraform, Kubernetes (k3s), FreePBX VoIP, LAMP web server, Netdata                    |
 | Joshua Leclerc       | hMailServer, osTicket, Veeam, Defender for Endpoint, Homarr                            |
 | Loucas Viens         | Proxmox VE, physical network and VLANs, Active Directory, Xray VPN, Caddy, \*arr, AMP  |
 

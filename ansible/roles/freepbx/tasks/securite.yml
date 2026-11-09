@@ -1,0 +1,34 @@
+---
+# L'interface web en HTTPS : depuis le VLAN 10, le pare-feu ne laisse
+# passer que HTTPS vers les autres VLANs (regle 1). Certificat autosigne.
+- name: Certificat autosigne pour Apache
+  ansible.builtin.apt:
+    name: ssl-cert
+    state: present
+
+- name: Module SSL d'Apache
+  community.general.apache2_module:
+    name: ssl
+    state: present
+  notify: Redemarrer Apache
+
+- name: Site HTTPS d'Apache
+  ansible.builtin.command: a2ensite default-ssl
+  args:
+    creates: /etc/apache2/sites-enabled/default-ssl.conf
+  notify: Redemarrer Apache
+
+- name: Regles du pare-feu
+  ansible.builtin.template:
+    src: "rules.{{ item }}.j2"
+    dest: "/etc/iptables/rules.{{ item }}"
+    mode: "0640"
+  loop:
+    - v4
+    - v6
+  notify: Recharger le pare-feu
+
+- name: Pare-feu actif au demarrage
+  ansible.builtin.service:
+    name: netfilter-persistent
+    enabled: true

@@ -1,0 +1,52 @@
+---
+- name: Attendre la fin de cloud-init
+  ansible.builtin.command: cloud-init status --wait
+  changed_when: false
+
+# Le script lance apt lui-meme : il echoue si unattended-upgrades tient le
+# verrou de dpkg au meme moment. (unattended-upgrade-shutdown, lui, tourne
+# en permanence sans toucher a apt : on ne l'attend pas.)
+- name: Attendre que apt soit libre
+  ansible.builtin.shell: |
+    for i in $(seq 120); do
+      pgrep -x apt-get >/dev/null || pgrep -x dpkg >/dev/null || pgrep -f "^/usr/bin/python3 /usr/bin/unattended-upgrade" >/dev/null || exit 0
+      sleep 5
+    done
+    exit 1
+  changed_when: false
+
+- name: Telecharger le script d'installation de FreePBX
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/FreePBX/sng_freepbx_debian_install/{{ freepbx_installer_commit }}/sng_freepbx_debian_install.sh"
+    dest: /usr/local/src/sng_freepbx_debian_install.sh
+    checksum: "sha256:{{ freepbx_installer_sha256 }}"
+    mode: "0755"
+
+# Correctif local (files/installateur.patch) : la desinstallation d'un module
+# commercial (oracle_connector) echoue et arretait toute l'installation.
+- name: Outil patch
+  ansible.builtin.apt:
+    name: patch
+    state: present
+
+- name: Correctif du script d'installation
+  ansible.builtin.copy:
+    src: installateur.patch
+    dest: /usr/local/src/installateur.patch
+    mode: "0644"
+
+# 20 a 40 minutes. Le detail est dans /var/log/pbx/freepbx17-install-*.log.
+# Le script peut etre relance : il saute ce qui est deja installe. Le
+# fichier temoin n'est cree que s'il va jusqu'au bout.
+- name: Installer FreePBX 17 et Asterisk
+  ansible.builtin.shell: |
+    set -e
+    rm -f sng_freepbx_debian_install.cde.sh
+    patch -o sng_freepbx_debian_install.cde.sh sng_freepbx_debian_install.sh installateur.patch
+    bash sng_freepbx_debian_install.cde.sh {{ freepbx_installer_args }}
+    touch /root/.freepbx-installe
+  args:
+    chdir: /usr/local/src
+    creates: /root/.freepbx-installe
+  async: 5400
+  poll: 30

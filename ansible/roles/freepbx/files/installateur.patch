@@ -1,0 +1,15 @@
+--- a/sng_freepbx_debian_install.sh
++++ b/sng_freepbx_debian_install.sh
+@@ -1290,7 +1290,11 @@
+   # Check if only opensource required then remove the commercial modules
+   if [ "$opensourceonly" ]; then
+     setCurrentStep "Removing commercial modules"
+-    fwconsole ma list | awk '/Commercial/ {print $2}' | xargs -t -I {} fwconsole ma -f remove {} >> "$log"
++    # CDE: some uninstall scripts fail (oracle_connector, 2026-11) and stop the
++    # whole install; continue, then delete the files these modules leave behind,
++    # or "fwconsole ma installlocal" below would install them again.
++    fwconsole ma list | awk '/Commercial/ {print $2}' | xargs -t -I {} fwconsole ma -f remove {} >> "$log" || true
++    fwconsole ma list | awk '/Commercial/ {print $2}' | xargs -r -t -I {} fwconsole ma -f delete {} >> "$log" || true
+     # Remove firewall module also because it depends on commercial sysadmin module
+     fwconsole ma -f remove firewall >> "$log" || true
+   fi

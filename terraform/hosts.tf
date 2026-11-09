@@ -6,16 +6,20 @@
 #
 # The VM ID is the VLAN number followed by the last octet of the planned
 # address (voip01, 10.10.20.20 -> 2020), so it never has to change.
+#
+# Hosts run Debian 13 unless they set `debian = 12`.
 locals {
   vms = {
+    # FreePBX 17 only supports Debian 12.
     voip01 = {
       vm_id       = 2020
-      description = "Asterisk IP telephony"
+      description = "FreePBX IP telephony (Asterisk)"
       ip          = "10.10.20.20"
       planned     = "10.10.20.20 (VLAN 20)"
-      cores       = 1
-      memory      = 1024
-      disk        = 8
+      debian      = 12
+      cores       = 2
+      memory      = 4096
+      disk        = 32
     }
     web01 = {
       vm_id       = 2021

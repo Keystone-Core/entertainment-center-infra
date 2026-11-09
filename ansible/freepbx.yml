@@ -1,0 +1,7 @@
+---
+# Lancer a part : ansible-playbook freepbx.yml
+# Le role base doit etre passe avant (site.yml).
+- name: Telephonie IP (FreePBX)
+  hosts: voip01
+  roles:
+    - freepbx
