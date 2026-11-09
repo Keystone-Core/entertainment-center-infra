@@ -27,18 +27,62 @@ The configuration is in hMailServer's database, not in files that could go in th
 
 ## osTicket (`tick01`)
 
-| Item      | Value                                                                  |
-| --------- | ---------------------------------------------------------------------- |
-| Host      | `tick01` (VM 2012), Debian, 2 vCPU, 2 GB RAM, 16 GB disk, VLAN 20       |
-| Address   | `10.10.20.12`                                                          |
-| Web       | `http://10.10.20.12/` (Apache), staff panel on `/scp/login.php`        |
-| Access    | SSH from VLANs 10 and 20, keys only; console in Proxmox (serial, xterm.js) |
+| Item      | Value                                                                           |
+| --------- | ------------------------------------------------------------------------------- |
+| Host      | `tick01` (VM 2012), Debian 13, 2 vCPU, 2 GB RAM, 16 GB disk, VLAN 20            |
+| Address   | `10.10.20.12`, static (`/etc/systemd/network/10-ens18.network`)                 |
+| Version   | osTicket 1.18.4, on Apache 2.4 and PHP 8.4                                      |
+| Database  | MariaDB 11.8, database and user `osticket`, local connections only              |
+| Files     | `/var/www/osticket`, owned by `www-data`                                        |
+| Web       | `http://10.10.20.12/`, staff panel on `/scp/`, title "Centre de divertissement de l'Estrie - Support" |
+| Access    | SSH as `admin` with the team's key, from VLANs 10 and 20; `sudo` without password; Proxmox console |
 
-The firewall already allows `proxy01` to reach it (rule 4), but it isn't published through Caddy yet.
+### Email
+
+| Address           | Use                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| `support@cde.lan` | Default address. osTicket fetches it from `mail01.cde.lan` over IMAP every 5 minutes and sends through SMTP on port 25 |
+| `alerts@cde.lan`  | Alerts to the staff                                                                  |
+| `noreply@cde.lan` | Automatic messages                                                                   |
+
+### Staff and departments
+
+The agents are `cdeadmin`, `nanillo`, `adespres`, `jleclerc` and `lviens`, all administrators. They are osTicket accounts, separate from Active Directory. The departments are Soutien TI, Maintenance, Cinéma et salles, Postes publics et IoT, Serveurs de jeux and Sales.
+
+### Rebuilding it
+
+Veeam backs up `tick01` every night, so restoring the VM is the normal way back. To install it from scratch, on Debian 13:
+
+1. Install `apache2`, `mariadb-server`, `php`, `php-apcu`, `php-curl`, `php-gd`, `php-intl`, `php-mbstring`, `php-mysql`, `php-xml`, `php-zip`, `unzip` and `cron`, and enable Apache's `rewrite` module.
+2. Unpack osTicket 1.18.4 in `/var/www/osticket`, owned by `www-data`, and create the `osticket` database and user.
+3. Add `/etc/apache2/sites-enabled/osticket.conf`:
+
+   ```apache
+   <VirtualHost *:80>
+       ServerName tick01.cde.lan
+       DocumentRoot /var/www/osticket
+       <Directory /var/www/osticket>
+           AllowOverride All
+           Require all granted
+       </Directory>
+       ErrorLog ${APACHE_LOG_DIR}/osticket_error.log
+       CustomLog ${APACHE_LOG_DIR}/osticket_access.log combined
+   </VirtualHost>
+   ```
+
+4. Run the web installer, then delete the `setup` folder.
+5. Add the job that fetches the email, in the crontab of `www-data`:
+
+   ```cron
+   */5 * * * * /usr/bin/php /var/www/osticket/api/cron.php
+   ```
 
 ## Status
 
 As of November 9, 2026:
 
-- `tick01` could only be inspected from the network. It has no QEMU guest agent and the team's Ansible key isn't installed on it, so its configuration isn't documented further and it isn't in the Ansible inventory. To open it up, add the key to the `admin` account from its Proxmox console.
+- `tick01` is managed by hand and isn't in the Ansible inventory, since the base role would change its SSH settings and update its packages. It has no QEMU guest agent.
+- The crontab of `www-data` has the `cron.php` line twice, so the job runs twice every 5 minutes.
+- `alerts@cde.lan` and `noreply@cde.lan` have no mailbox on `mail01`. The closest one is `alertes@cde.lan`.
+- osTicket runs over plain HTTP and isn't published through Caddy yet, although the firewall already allows `proxy01` to reach it (rule 4).
 - `mail01` isn't joined to the domain, and TLS (port 993) isn't in use.
