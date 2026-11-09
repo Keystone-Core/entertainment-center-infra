@@ -7,6 +7,7 @@
 | Server        | `bkp01` (VM 2013), `10.10.20.13`, Windows Server 2025 evaluation, 8 vCPU, 24 GB RAM, workgroup |
 | Version       | Veeam Backup & Replication 13.1.2, PostgreSQL 17                                            |
 | Disks         | `C:` 100 GB, `R:` 200 GB (backups, catalog and reports)                                     |
+| Web           | `https://veeam.divertissementestrie.ca` from VLANs 10 and 20; `https://10.10.20.13` directly     |
 | Worker        | `veeam-worker` (VM 102), `10.10.20.14`, 6 vCPU, 6 GB RAM, off unless Veeam starts it         |
 | Proxmox       | `10.85.2.127`, added to Veeam as a managed server                                           |
 | Firewall      | LAN rule "Veeam -> API/SSH Proxmox": `bkp01` and `veeam-worker` to Proxmox, TCP 22 and 8006  |

@@ -7,7 +7,7 @@
 | Host            | `voip01` (VM 2020), `10.10.20.20`, VLAN 20, 2 vCPU, 4 GB RAM, 32 GB disk                 |
 | System          | Debian 12: FreePBX 17 doesn't support Debian 13 (`debian = 12` in `terraform/hosts.tf`)  |
 | Modules         | Open source only (installer option `--opensourceonly`): no Sangoma account needed       |
-| Web interface   | `https://10.10.20.20/admin`, from VLAN 10, self-signed certificate                      |
+| Web interface   | `https://freepbx.divertissementestrie.ca/admin` from VLANs 10 and 20; `https://10.10.20.20/admin` from VLAN 10 (self-signed certificate) |
 | SIP             | `10.10.20.20:5060`, UDP, from VLAN 20. FreePBX doesn't enable SIP over TCP by default    |
 | Audio (RTP)     | 10000 to 20000/UDP, from VLAN 20                                                        |
 | Voice prompts   | French                                                                                  |
