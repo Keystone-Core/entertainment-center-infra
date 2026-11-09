@@ -5,7 +5,7 @@
 | Item      | Value                                                                             |
 | --------- | --------------------------------------------------------------------------------- |
 | Host      | `dash01` (VM 2041), `10.10.20.41`, VLAN 20, 2 vCPU, 2 GB RAM, 8 GB disk           |
-| Address   | `http://10.10.20.41:7575`, from VLAN 20                                           |
+| Address   | `https://homarr.divertissementestrie.ca` from VLANs 10 and 20; `http://10.10.20.41:7575` from VLAN 20 |
 | Folder    | `/opt/homarr`: `docker-compose.yml`, `.env` and `appdata/`                        |
 | Image     | `ghcr.io/homarr-labs/homarr:latest`                                               |
 | Secret    | `SECRET_ENCRYPTION_KEY` in `/opt/homarr/.env` (mode 600), never in the repository |
@@ -30,6 +30,5 @@ The role only creates `.env` if it doesn't exist, so running it again never chan
 
 As of November 9, 2026:
 
-- **Not published through Caddy yet.** The firewall already allows `proxy01` to reach it (rule 4); it needs a `homarr` entry in `caddy_sites` and the internal DNS records, as in [Publishing Services with Caddy](publishing-services-with-caddy.md).
 - **The image follows `latest`,** so a `docker-compose pull` can bring a new version. Pin a version before relying on it for the final demonstration.
 - A local `admin` account with `sudo` was created by hand on `dash01`. It isn't managed by Ansible.

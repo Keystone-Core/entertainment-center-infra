@@ -4,9 +4,9 @@ The centre's public website, in French, running on the `k3s01` cluster as a LAMP
 
 | Part | Runs as | Address |
 | ---- | ------- | ------- |
-| Apache + PHP 8.4 (FPM) | Deployment `php`, image `serversideup/php` | `http://web.cde.lan` (Traefik) |
+| Apache + PHP 8.4 (FPM) | Deployment `php`, image `serversideup/php` | `https://www.divertissementestrie.ca` (Caddy, then Traefik) |
 | MariaDB 11.8 | Deployment `mariadb`, PVC `mariadb-data` | Service `mariadb:3306`, inside the cluster only |
-| phpMyAdmin 5.2 | Deployment `phpmyadmin` | `http://pma.cde.lan` (Traefik) |
+| phpMyAdmin 5.2 | Deployment `phpmyadmin` | `https://phpmyadmin.divertissementestrie.ca` (Caddy, then Traefik) |
 | Posters | PVC `uploads` | Mounted on the `php` pod, outside the web root |
 
 ## What the site does
@@ -106,7 +106,6 @@ kubectl -n web get secret web-db -o jsonpath='{.data.password}' | base64 -d; ech
 
 ## Not done yet
 
-- **HTTPS:** `proxy01` needs Caddy site blocks for the final names, and the names need DNS records. Once the site is served over HTTPS, set `PHP_SESSION_COOKIE_SECURE` to `"true"` in [`php.yaml`](php.yaml).
 - **Placeholder content:** the hours, prices and phone number in `content.php`, the demo films, and the game server addresses (game01's planned address, `10.10.80.20`).
 - **Forgotten passwords:** there's no reset by email yet. Staff can delete the account with `cli.php` so the customer can create it again.
 - **Backups:** the volumes are folders on `k3s01`'s disk. They're only as safe as the backups of VM 2031.

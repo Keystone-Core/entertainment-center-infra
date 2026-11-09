@@ -53,14 +53,15 @@ The token is copied to `proxy01` on the first run. Later runs don't need it: wit
 
    Services on k3s all use the Traefik ingress as upstream (`10.10.20.31:80`); see [deploying services on k3s](deploying-services-on-k3s.md).
 
-   Two optional keys:
+   Optional keys:
 
    | Key       | Use                                                                                                          |
    | --------- | ------------------------------------------------------------------------------------------------------------ |
    | `reseaux` | Only these networks may open the site; Caddy answers 403 to the others                                       |
-   | `ca`      | The upstream uses HTTPS with its own certificate authority: path of that authority's public certificate, relative to `ansible/` (for example `files/ca/proxmox.pem`). Caddy verifies the upstream with it. |
+   | `ca`      | The upstream uses HTTPS with a private or self-signed certificate: path of the public certificate that vouches for it, relative to `ansible/` (for example `files/ca/proxmox.pem`). Caddy verifies the upstream with it. |
+   | `nom_tls` | Name to verify in that certificate, when it doesn't contain the upstream's address |
 
-2. Check that the firewall allows `proxy01` to reach the upstream: its address must be in `SERVICES_HTTP` and its port in `PORTS_HTTP` on fw01, or a dedicated DMZ rule allows it. Add them if needed and record the change in the network log.
+2. Check that the firewall allows `proxy01` to reach the upstream: its address must be in `SERVICES_HTTP` and its port in `PORTS_HTTP` on fw01, or a dedicated DMZ rule allows it (`SERVICES_HTTPS` lists the upstreams reached on 443). Add them if needed and record the change in the network log.
 3. Make the name resolve to `proxy01` inside the centre, on both DNS servers:
    - **fw01** (VLAN 10, the Linux hosts): pfSense → *Services → DNS Resolver → Host Overrides*, host `netdata`, domain `divertissementestrie.ca`, IP `10.10.80.10`.
    - **dc01** (the Windows workstations of VLAN 20): a primary zone named after the full name, holding only an A record at its root, so the rest of the public domain still resolves normally:
@@ -76,9 +77,22 @@ The DMZ only lets web traffic out, so Caddy can't query Cloudflare's name server
 
 ## Published sites
 
-| Name                              | Upstream                    | Access            | Firewall                               |
-| --------------------------------- | --------------------------- | ----------------- | -------------------------------------- |
-| `proxmox.divertissementestrie.ca` | `https://10.85.2.127:8006` (pve, verified with its CA) | VLANs 10 and 20 | DMZ rule "Caddy vers l interface web de Proxmox" |
+Every site is open to VLANs 10 and 20 only.
+
+| Address                                  | Service       | Upstream                                 | Firewall (DMZ)                                  |
+| ---------------------------------------- | ------------- | ---------------------------------------- | ----------------------------------------------- |
+| `https://proxmox.divertissementestrie.ca`    | Proxmox       | `https://10.85.2.127:8006`               | Rule "Caddy vers l interface web de Proxmox"    |
+| `https://pfsense.divertissementestrie.ca`    | pfSense       | `https://10.10.20.1`                     | `SERVICES_HTTPS`                                |
+| `https://freepbx.divertissementestrie.ca`    | FreePBX       | `https://10.10.20.20`                    | `SERVICES_HTTPS`                                |
+| `https://veeam.divertissementestrie.ca`      | Veeam         | `https://10.10.20.13`                    | `SERVICES_HTTPS`                                |
+| `https://osticket.divertissementestrie.ca`   | osTicket      | `10.10.20.12:80`                         | Rule 4                                          |
+| `https://homarr.divertissementestrie.ca`     | Homarr        | `10.10.20.41:7575`                       | Rule 4                                          |
+| `https://www.divertissementestrie.ca`        | Website       | `10.10.20.31:80` (Traefik)               | Rule 4                                          |
+| `https://phpmyadmin.divertissementestrie.ca` | phpMyAdmin    | `10.10.20.31:80` (Traefik)               | Rule 4                                          |
+
+The public certificates of the HTTPS upstreams are in [`ansible/files/ca/`](../../ansible/files/ca/). If a service replaces its certificate, copy the new one there and run the playbook, or Caddy answers `502`. pfSense's expires in April 2027.
+
+pfSense refuses a name it doesn't know: its public name is in *System → Advanced → Admin Access → Alternate Hostnames*.
 
 ## Checking
 
@@ -97,7 +111,7 @@ caddy list-modules | grep cloudflare
 | No certificate, `journalctl` shows a Cloudflare error | The token's permissions (Zone.DNS:Edit on the right zone) or its value.        |
 | The name doesn't resolve                 | The host override on pfSense (fw01 clients) or the zone on dc01 (Windows clients).           |
 | `403`                                    | The client's network isn't in the site's `reseaux`.                                         |
-| `502 Bad Gateway`                        | The service isn't running, or the firewall blocks `proxy01` → upstream (rule 4).             |
+| `502 Bad Gateway`                        | The service isn't running, the firewall blocks `proxy01` → upstream, or the upstream's certificate no longer matches the copy in `ansible/files/ca/`. |
 | Unreachable from home                    | Public access isn't set up: fw01's WAN TCP 443 already goes to the Xray VPN. Connect through the VPN. |
 
 ## Updating Caddy

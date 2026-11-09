@@ -17,6 +17,7 @@ The following table records each version of the log.
 | 1.6     | November 4, 2026   | Loucas Viens | Proxmox web interface published by Caddy (proxmox.divertissementestrie.ca, VLANs 10 and 20); DMZ rule proxy01 → Proxmox:8006; internal DNS records |
 | 1.7     | November 9, 2026   | Alexy Després | voip01 rebuilt on Debian 12 and running FreePBX 17; its web interface over HTTPS from VLAN 10; host firewall on voip01 |
 | 1.8     | November 9, 2026   | Loucas Viens | Log compared with every VM and with fw01: mail01, tick01, veeam-worker, MQTT without TLS, VPN not deployed, Veeam and MQTT test rules on fw01, workstations joined to the domain |
+| 1.9     | November 9, 2026   | Loucas Viens | pfSense, FreePBX, Veeam, osTicket, Homarr, the website and phpMyAdmin published by Caddy for VLANs 10 and 20; alias SERVICES_HTTPS and its DMZ rule; internal DNS records |
 
 ## 10.1 Addressing Plan, Equipment and Assigned Users
 
@@ -34,7 +35,7 @@ The initial plan had eight VLANs, with separate networks for the staff workstati
 
 Within VLAN 20, the addresses are divided by type of device: .10 to .99 for the servers (static addressing), .100 to .149 for the workstations and phones (DHCP reservations) and .150 to .199 for the dynamic DHCP pool.
 
-**Implementation status (version 1.8).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
+**Implementation status (version 1.9).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
 
 - **pve01** keeps its address on the cégep network (10.85.2.127, bridge vmbr0) instead of 10.10.10.10. fw01's WAN interface is also on that network and gets its address by DHCP (10.85.2.16 at the time of writing).
 - **The control station** is the container ctrl-iac (LXC 110), at 10.10.10.20 in VLAN 10 as planned. It uses fw01 (10.10.10.1) as DNS server, which also resolves the cde.lan domain. Since pve01 is on the cégep network, it reaches the Proxmox API through fw01 (section 10.3, GESTION).
@@ -111,7 +112,7 @@ The following table lists the listening ports of each service and the networks a
 | ----------- | -------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------- |
 | pve01       | Proxmox web interface                                    | 8006/TCP                                                           | VLAN 10; bkp01                           |
 | Linux hosts | SSH administration                                       | 22/TCP                                                             | VLAN 10                                  |
-| fw01        | Firewall administration                                  | 443/TCP                                                            | VLAN 10                                  |
+| fw01        | Firewall administration                                  | 443/TCP                                                            | VLANs 10 and 20; proxy01                 |
 | fw01        | DNS resolver                                             | 53/UDP and TCP                                                     | Every VLAN, on its own .1 address (IOT: mqtt01 only) |
 | fw01        | NTP server (synced with the cégep server)                | 123/UDP                                                            | Every VLAN, on its own .1 address (IOT: mqtt01 only) |
 | 10.10.20.200 | Xray VPN server (not deployed yet)                      | 443/TCP                                                            | Internet (port forwarding)               |
@@ -122,10 +123,10 @@ The following table lists the listening ports of each service and the networks a
 | mail01      | Email submission and retrieval (IMAP, TLS not in use)    | 587, 143/TCP                                                       | VLAN 20                                  |
 | mail01      | Email exchange with the Internet                         | 25/TCP                                                             | Internet (if an MX record is published)  |
 | tick01      | osTicket (HTTP)                                          | 80/TCP                                                             | proxy01                                  |
-| bkp01       | Veeam Backup & Replication (console 9392 is local only)  | 443, 6162/TCP                                                      | VLAN 20; pve01                           |
+| bkp01       | Veeam Backup & Replication (console 9392 is local only)  | 443, 6162/TCP                                                      | VLANs 10 and 20; proxy01; pve01          |
 | voip01      | SIP signalling                                           | 5060/UDP and TCP                                                   | VLAN 20 (IP phones)                      |
 | voip01      | Audio streams (RTP)                                      | 10000 to 20000/UDP                                                 | VLAN 20 (IP phones)                      |
-| voip01      | FreePBX web interface (HTTPS)                            | 443/TCP                                                            | VLAN 10                                  |
+| voip01      | FreePBX web interface (HTTPS)                            | 443/TCP                                                            | VLAN 10; proxy01                         |
 | web01       | Apache (HTTP)                                            | 80/TCP                                                             | proxy01                                  |
 | web01       | MariaDB                                                  | 3306/TCP                                                           | web01 only (local interface)             |
 | mon01       | Netdata (web interface)                                  | 19999/TCP                                                          | proxy01                                  |
@@ -179,6 +180,7 @@ The rules use the following aliases:
 | `PORTS_HTTP`    | 80, 7575, 7878, 8080, 8096, 8989, 9696, 19999                           |
 | `PORTS_JEUX`    | 25565                                                                   |
 | `SERVICES_HTTP` | tick01, web01, mon01, k3s01, media01, dash01                            |
+| `SERVICES_HTTPS` | fw01 (10.10.20.1), bkp01 (10.10.20.13), voip01 (10.10.20.20)           |
 | `PORTS_MQTT`    | 1883, 8883                                                              |
 | `PVE_ADMIN`     | 22, 8006                                                                |
 | `VEEAM_HOSTS`   | bkp01 (10.10.20.13), veeam-worker (10.10.20.14)                         |
@@ -248,6 +250,7 @@ The exceptions only concern the mqtt01 VM, which needs packages and the time; th
 | ------------- | ------- | --------------- | ----------------- | ---------------------- |
 | Allow         | proxy01 | `SERVICES_HTTP` | TCP `PORTS_HTTP`  | Rule 4                 |
 | Allow         | proxy01 | Proxmox         | 8006/TCP          | Proxmox web interface published by Caddy (v1.6) |
+| Allow         | proxy01 | `SERVICES_HTTPS` | 443/TCP          | HTTPS interfaces published by Caddy (v1.9) |
 | Allow         | VLAN 80 | mon01           | 19999/TCP         | Rule 6                 |
 | Allow         | VLAN 80 | fw01            | 53/TCP and UDP    | DNS                    |
 | Allow         | VLAN 80 | fw01            | 123/UDP           | NTP                    |
@@ -258,7 +261,7 @@ Compared with the policy of section 10.2, the configuration differs as follows:
 
 - DNS and NTP go to fw01's address in each VLAN instead of dc01 and the Internet; fw01 resolves names and syncs its clock with the cégep servers. The Linux hosts take their DNS server and NTP server from their gateway (Terraform and Ansible).
 - Traffic to the Internet is limited to TCP 80 and 443.
-- The Proxmox web interface is also published by proxy01 as `proxmox.divertissementestrie.ca`, for VLANs 10 and 20 only (Caddy answers 403 to the other networks). pve01 being on the cégep network, this needs the DMZ rule above. The name resolves to proxy01 (10.10.80.10) through a host override on fw01 and a dedicated zone on dc01.
+- proxy01 publishes the web interfaces of Proxmox, pfSense, FreePBX, Veeam, osTicket and Homarr, the website and phpMyAdmin as `<name>.divertissementestrie.ca`, for VLANs 10 and 20 only (Caddy answers 403 to the other networks; list in the [Caddy guide](guides/publishing-services-with-caddy.md#published-sites)). Each name resolves to proxy01 (10.10.80.10) through a host override on fw01 and a dedicated zone on dc01. Through proxy01, FreePBX is reachable from VLAN 20, which the direct access doesn't allow.
 - **Not configured yet:** rules 11 and 12 (email), rule 13 (game port forwarding, planned once AMP runs on game01; it also needs the cégep's agreement since fw01's WAN is on its network).
 
 The rules were checked on November 2, 2026 from the hosts of each VLAN (VLAN 10 from ts01, DMZ from proxy01 and game01, IOT from mqtt01, VLAN 20 from web01) and from temporary test hosts in VLANs 10, 40, 60 and 80: every allowed flow passed and every blocked flow was blocked. The DHCP of VLANs 20 (direct) and 40 (relay) was checked the same day with temporary DHCP clients, whose leases were then removed from dc01. This section was compared again with fw01's configuration on November 9, 2026.

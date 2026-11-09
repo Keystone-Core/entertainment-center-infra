@@ -4,17 +4,48 @@
 # SERVICES_HTTP, ou une regle DMZ dediee). Cles optionnelles :
 #   reseaux : seuls ces reseaux ont acces (les autres recoivent 403)
 #   ca      : certificat de l'autorite d'un amont HTTPS (relatif a ansible/)
-# Exemples :
+#   nom_tls : nom a verifier dans ce certificat, s'il ne contient pas l'adresse
+# Exemple :
 #   - nom: netdata
 #     upstream: 10.10.20.22:19999
-#   - nom: homarr
-#     upstream: 10.10.20.41:7575
 caddy_sites:
-  # Interface web de Proxmox (pve, sur le reseau du cegep), pour les VLANs
-  # 10 et 20 seulement. Regle DMZ : PROXY01 vers Proxmox:8006.
+  # Interface web de Proxmox (pve, sur le reseau du cegep). Regle DMZ :
+  # PROXY01 vers Proxmox:8006.
   - nom: proxmox
     upstream: https://10.85.2.127:8006
     ca: files/ca/proxmox.pem
-    reseaux:
+    reseaux: &vlans_internes
       - 10.10.10.0/24
       - 10.10.20.0/24
+
+  # Amonts en HTTPS. Regle DMZ : PROXY01 vers SERVICES_HTTPS:443.
+  # Pour pfSense, le nom public doit aussi etre dans ses « Alternate Hostnames ».
+  - nom: pfsense
+    upstream: https://10.10.20.1
+    ca: files/ca/pfsense.pem
+    nom_tls: pfSense-6ac7f654224c2
+    reseaux: *vlans_internes
+  - nom: freepbx
+    upstream: https://10.10.20.20
+    ca: files/ca/freepbx.pem
+    nom_tls: voip01
+    reseaux: *vlans_internes
+  - nom: veeam
+    upstream: https://10.10.20.13
+    ca: files/ca/veeam.pem
+    reseaux: *vlans_internes
+
+  # Amonts en HTTP (regle 4). Le site et phpMyAdmin passent par Traefik,
+  # qui choisit l'Ingress selon le nom demande.
+  - nom: osticket
+    upstream: 10.10.20.12:80
+    reseaux: *vlans_internes
+  - nom: homarr
+    upstream: 10.10.20.41:7575
+    reseaux: *vlans_internes
+  - nom: www
+    upstream: 10.10.20.31:80
+    reseaux: *vlans_internes
+  - nom: phpmyadmin
+    upstream: 10.10.20.31:80
+    reseaux: *vlans_internes
