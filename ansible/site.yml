@@ -3,3 +3,8 @@
   hosts: linux
   roles:
     - base
+
+- name: Courtier MQTT
+  hosts: mqtt
+  roles:
+    - mosquitto

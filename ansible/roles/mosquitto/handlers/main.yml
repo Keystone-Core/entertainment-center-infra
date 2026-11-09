@@ -1,0 +1,13 @@
+---
+- name: Generer les mots de passe mosquitto
+  ansible.builtin.shell: |
+    install -m 0600 -o mosquitto -g mosquitto /etc/mosquitto/passwd.clear /etc/mosquitto/passwd
+    mosquitto_passwd -U /etc/mosquitto/passwd
+    chown mosquitto:mosquitto /etc/mosquitto/passwd
+    chmod 0600 /etc/mosquitto/passwd
+  no_log: true
+
+- name: Redemarrer mosquitto
+  ansible.builtin.service:
+    name: mosquitto
+    state: restarted

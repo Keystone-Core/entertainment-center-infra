@@ -1,0 +1,5 @@
+# Gere par Ansible - ne pas modifier a la main
+listener {{ mosquitto_port }} 0.0.0.0
+allow_anonymous false
+password_file /etc/mosquitto/passwd
+acl_file /etc/mosquitto/acl
