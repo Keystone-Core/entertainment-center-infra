@@ -1,0 +1,22 @@
+# Gere par Ansible - ne pas modifier a la main
+# Pare-feu de voip01 (journal reseau, section 10.2). fail2ban ajoute ses
+# propres chaines au demarrage.
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -p icmp -j ACCEPT
+{% for reseau in freepbx_reseaux_ssh %}
+-A INPUT -s {{ reseau }} -p tcp --dport 22 -j ACCEPT
+{% endfor %}
+{% for reseau in freepbx_reseaux_sip %}
+-A INPUT -s {{ reseau }} -p udp --dport 5060 -j ACCEPT
+-A INPUT -s {{ reseau }} -p tcp --dport 5060 -j ACCEPT
+-A INPUT -s {{ reseau }} -p udp --dport {{ freepbx_rtp_debut }}:{{ freepbx_rtp_fin }} -j ACCEPT
+{% endfor %}
+{% for reseau in freepbx_reseaux_web %}
+-A INPUT -s {{ reseau }} -p tcp -m multiport --dports 80,443 -j ACCEPT
+{% endfor %}
+COMMIT

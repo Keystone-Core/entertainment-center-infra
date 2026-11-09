@@ -1,0 +1,9 @@
+---
+- name: Installation de FreePBX
+  ansible.builtin.import_tasks: installation.yml
+
+- name: Configuration (administrateur, postes, groupe d'appel, langue)
+  ansible.builtin.import_tasks: configuration.yml
+
+- name: HTTPS et pare-feu
+  ansible.builtin.import_tasks: securite.yml

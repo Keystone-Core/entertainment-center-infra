@@ -1,0 +1,44 @@
+---
+# Script d'installation officiel de FreePBX 17 (Debian 12 seulement),
+# epingle sur un commit et verifie par empreinte : il ne change pas sous
+# nos pieds. Pour changer de version, mettre a jour les deux valeurs.
+freepbx_installer_commit: b023b8426786a518d25dfc0d11ba0c0314fcd927
+freepbx_installer_sha256: afef5e4b480cf545b2035f92068dc2fdd32452989d170a16a84acb6e37b7d564
+# Modules libres seulement ; chrony reste gere par le role base.
+freepbx_installer_args: --opensourceonly --nochrony --skipversion
+
+# Mots de passe generes sur le poste de controle, jamais dans le depot.
+freepbx_secrets: /root/.cde-secrets/voip01
+freepbx_admin: admin
+
+# Postes du personnel (TEL-01 a TEL-04 du journal reseau), avec messagerie.
+freepbx_postes:
+  - numero: 101
+    nom: Gérance
+  - numero: 102
+    nom: Accueil
+  - numero: 103
+    nom: Soutien technique
+  - numero: 104
+    nom: Poste polyvalent
+
+# Groupe d'appel qui fait sonner tous les postes en meme temps.
+# Sans reponse, l'appel va a la messagerie du poste `messagerie`.
+freepbx_groupe:
+  numero: 600
+  nom: Tout le personnel
+  messagerie: 102
+
+# Langue des messages vocaux.
+freepbx_langue: fr
+
+# Pare-feu de l'hote (journal reseau, section 10.2).
+freepbx_reseaux_ssh:
+  - 10.10.10.0/24        # VLAN 10, gestion
+freepbx_reseaux_sip:
+  - 10.10.20.0/24        # VLAN 20, telephones IP
+freepbx_reseaux_web:
+  - 10.10.10.0/24        # VLAN 10 (HTTPS, regle 1)
+  - 10.10.80.10/32       # proxy01, pour une publication par Caddy
+freepbx_rtp_debut: 10000
+freepbx_rtp_fin: 20000

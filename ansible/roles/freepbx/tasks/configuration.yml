@@ -1,0 +1,101 @@
+---
+# Mots de passe generes au premier passage et gardes sur le poste de
+# controle, dans {{ freepbx_secrets }} : jamais dans le depot ni les journaux.
+- name: Dossier des mots de passe sur le poste de controle
+  ansible.builtin.file:
+    path: "{{ freepbx_secrets }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+
+- name: Mot de passe de l'administrateur
+  ansible.builtin.set_fact:
+    freepbx_mdp_admin: "{{ lookup('ansible.builtin.password', freepbx_secrets ~ '/admin length=24 chars=ascii_letters,digits') }}"
+  no_log: true
+
+- name: Mots de passe SIP et NIP de messagerie des postes
+  ansible.builtin.set_fact:
+    freepbx_mdp_postes: "{{ freepbx_mdp_postes | default({}) | combine({item.numero: {
+      'sip': lookup('ansible.builtin.password', freepbx_secrets ~ '/poste-' ~ item.numero ~ '-sip length=24 chars=ascii_letters,digits'),
+      'nip': lookup('ansible.builtin.password', freepbx_secrets ~ '/poste-' ~ item.numero ~ '-messagerie length=6 chars=digits')}}) }}"
+  loop: "{{ freepbx_postes }}"
+  no_log: true
+
+# Le premier compte cree remplace la page de configuration initiale.
+- name: Compte administrateur de l'interface web
+  ansible.builtin.shell: |
+    set -e
+    n=$(mysql -N asterisk -e "SELECT COUNT(*) FROM ampusers WHERE username = '{{ freepbx_admin }}'")
+    if [ "$n" = 0 ]; then
+      mysql asterisk -e "INSERT INTO ampusers (username, email, extension, password_sha1, extension_low, extension_high, deptname, sections)
+                         VALUES ('{{ freepbx_admin }}', '', '', SHA1('$MDP'), '', '', '', '*')"
+      echo cree
+    fi
+  environment:
+    MDP: "{{ freepbx_mdp_admin }}"
+  register: freepbx_admin_cree
+  changed_when: "'cree' in freepbx_admin_cree.stdout"
+  no_log: true
+
+- name: Lire les postes existants
+  ansible.builtin.command: mysql -N asterisk -e "SELECT extension FROM users"
+  register: freepbx_postes_existants
+  changed_when: false
+
+- name: Postes a creer
+  ansible.builtin.set_fact:
+    freepbx_postes_a_creer: "{{ freepbx_postes | rejectattr('numero', 'in', freepbx_postes_existants.stdout_lines | map('int') | list) | list }}"
+
+- name: Creer les postes manquants
+  when: freepbx_postes_a_creer | length > 0
+  block:
+    - name: Fichier d'import des postes
+      ansible.builtin.template:
+        src: postes.csv.j2
+        dest: /root/freepbx-postes.csv
+        mode: "0600"
+      no_log: true
+
+    # --replace contourne un bogue de bulkhandler 17.0.6 (« Undefined
+    # variable $replace » sans l'option). Sans effet ici : le fichier ne
+    # contient que des postes qui n'existent pas encore.
+    - name: Importer les postes
+      ansible.builtin.command: fwconsole bulkimport --type=extensions --replace /root/freepbx-postes.csv
+      changed_when: true
+      notify: Recharger FreePBX
+
+  always:
+    - name: Effacer le fichier d'import (il contient les mots de passe)
+      ansible.builtin.file:
+        path: /root/freepbx-postes.csv
+        state: absent
+
+# Sans reponse apres 30 secondes, l'appel va a la messagerie de l'accueil.
+- name: Groupe d'appel {{ freepbx_groupe.numero }}
+  ansible.builtin.shell: |
+    set -e
+    n=$(mysql -N asterisk -e "SELECT COUNT(*) FROM ringgroups WHERE grpnum = '{{ freepbx_groupe.numero }}'")
+    if [ "$n" = 0 ]; then
+      mysql asterisk -e "INSERT INTO ringgroups (grpnum, strategy, grptime, grppre, grplist, postdest, description, recording, rvolume)
+                         VALUES ('{{ freepbx_groupe.numero }}', 'ringall', 30, '',
+                                 '{{ freepbx_postes | map(attribute='numero') | join('-') }}',
+                                 'ext-local,vmu{{ freepbx_groupe.messagerie }},1', '{{ freepbx_groupe.nom }}', 'dontcare', '')"
+      echo cree
+    fi
+  register: freepbx_groupe_cree
+  changed_when: "'cree' in freepbx_groupe_cree.stdout"
+  notify: Recharger FreePBX
+
+# L'installation demande d'accepter la licence des messages (Creative
+# Commons, June Wallack/Digium, comme les messages anglais d'Asterisk).
+- name: Messages vocaux en {{ freepbx_langue }}
+  ansible.builtin.shell: |
+    set -e
+    fwconsole sounds --sync
+    yes | fwconsole sounds --install={{ freepbx_langue }}
+    fwconsole sounds --global={{ freepbx_langue }}
+    touch /root/.freepbx-langue-{{ freepbx_langue }}
+  args:
+    creates: /root/.freepbx-langue-{{ freepbx_langue }}
+  notify: Recharger FreePBX

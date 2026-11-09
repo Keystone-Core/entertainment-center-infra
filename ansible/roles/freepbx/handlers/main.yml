@@ -1,0 +1,15 @@
+---
+- name: Redemarrer Apache
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
+
+# Recharger les regles efface les chaines de fail2ban : on le redemarre
+# aussi pour qu'il les recree.
+- name: Recharger le pare-feu
+  ansible.builtin.command: systemctl restart netfilter-persistent fail2ban
+  changed_when: true
+
+- name: Recharger FreePBX
+  ansible.builtin.command: fwconsole reload
+  changed_when: true

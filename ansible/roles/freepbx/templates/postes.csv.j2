@@ -1,0 +1,4 @@
+extension,name,tech,secret,voicemail,voicemail_enable,voicemail_vmpwd
+{% for poste in freepbx_postes_a_creer %}
+{{ poste.numero }},"{{ poste.nom }}",pjsip,{{ freepbx_mdp_postes[poste.numero].sip }},default,yes,{{ freepbx_mdp_postes[poste.numero].nip }}
+{% endfor %}

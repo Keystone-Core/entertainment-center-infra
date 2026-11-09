@@ -15,6 +15,7 @@ The following table records each version of the log.
 | 1.4     | November 2, 2026   | Loucas Viens | DHCP relay of VLAN 40 to dc01; 10.10.20.200 (VPN) excluded from dc01's VLAN 20 pool; unused LAN rules and aliases removed; ts01 removed |
 | 1.5     | November 2, 2026   | Loucas Viens | Staff workstations created as VMs (20101 to 20104) in VLAN 20, with their MAC addresses |
 | 1.6     | November 4, 2026   | Loucas Viens | Proxmox web interface published by Caddy (proxmox.divertissementestrie.ca, VLANs 10 and 20); DMZ rule proxy01 → Proxmox:8006; internal DNS records |
+| 1.7     | November 9, 2026   | Alexy Després | voip01 rebuilt on Debian 12 and running FreePBX 17; its web interface over HTTPS from VLAN 10; host firewall on voip01 |
 
 ## 10.1 Addressing Plan, Equipment and Assigned Users
 
@@ -70,7 +71,7 @@ The addresses in the reserved range are assigned by DHCP reservation tied to the
 | mail01  | hMailServer email                                  | VM       | Windows Server   | 20   | 10.10.20.11 | J. Leclerc   |
 | tick01  | osTicket ticket management                         | VM       | Windows Server   | 20   | 10.10.20.12 | J. Leclerc   |
 | bkp01   | Veeam Backup & Replication                         | VM       | Windows Server   | 20   | 10.10.20.13 | J. Leclerc   |
-| voip01  | Asterisk telephony                                 | VM       | Debian           | 20   | 10.10.20.20 | A. Després   |
+| voip01  | FreePBX telephony (Asterisk)                       | VM       | Debian           | 20   | 10.10.20.20 | A. Després   |
 | web01   | Apache, MariaDB, PHP web server (LAMP)             | VM       | Debian           | 20   | 10.10.20.21 | A. Després   |
 | mon01   | Netdata monitoring                                 | VM       | Debian           | 20   | 10.10.20.22 | A. Després   |
 | k3s01   | Kubernetes (k3s)                                   | VM       | Debian           | 20   | 10.10.20.31 | N.-A. Anillo |
@@ -117,6 +118,7 @@ The following table lists the listening ports of each service and the networks a
 | bkp01       | Veeam Backup & Replication                               | 9392, 6162/TCP                                                     | VLAN 20; pve01                           |
 | voip01      | SIP signalling                                           | 5060/UDP and TCP                                                   | VLAN 20 (IP phones)                      |
 | voip01      | Audio streams (RTP)                                      | 10000 to 20000/UDP                                                 | VLAN 20 (IP phones)                      |
+| voip01      | FreePBX web interface (HTTPS)                            | 443/TCP                                                            | VLAN 10                                  |
 | web01       | Apache (HTTP)                                            | 80/TCP                                                             | proxy01                                  |
 | web01       | MariaDB                                                  | 3306/TCP                                                           | web01 only (local interface)             |
 | mon01       | Netdata (web interface)                                  | 19999/TCP                                                          | proxy01                                  |
@@ -153,7 +155,7 @@ The firewall applies a default-deny policy: any flow that is not allowed below i
 | 15  | VLAN 60 (connected devices)   | Internet and other VLANs                     | All                                                                    | Block                   |
 | 16  | Any                           | Any                                          | All                                                                    | Block and log           |
 
-Remote access for the administrators and technical support goes through the Xray VPN server (10.10.20.200), published on TCP 443 of the WAN interface. It replaces Tailscale, planned until version 1.1. Interconnecting the telephony with an external provider is outside the scope of the project: the Asterisk service remains internal to the centre. Two flows coming from the Internet reach VLAN 20: the VPN on TCP 443 and, if an MX record is published, email on TCP 25 to mail01 (rule 12). These exceptions to the demilitarized-zone separation are each limited to a single port.
+Remote access for the administrators and technical support goes through the Xray VPN server (10.10.20.200), published on TCP 443 of the WAN interface. It replaces Tailscale, planned until version 1.1. Interconnecting the telephony with an external provider is outside the scope of the project: the telephony (FreePBX) remains internal to the centre. Two flows coming from the Internet reach VLAN 20: the VPN on TCP 443 and, if an MX record is published, email on TCP 25 to mail01 (rule 12). These exceptions to the demilitarized-zone separation are each limited to a single port.
 
 ## 10.3 Configuration as Built on fw01
 
