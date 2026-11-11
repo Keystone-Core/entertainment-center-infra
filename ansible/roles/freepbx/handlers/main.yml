@@ -13,3 +13,11 @@
 - name: Recharger FreePBX
   ansible.builtin.command: fwconsole reload
   changed_when: true
+
+# Apres le rechargement (les handlers s'executent dans cet ordre), pour
+# qu'Asterisk demarre avec les fichiers a jour. Pas `fwconsole restart` :
+# il verifie si Asterisk tourne avant la fin de l'arret, plante et le
+# laisse arrete.
+- name: Redemarrer Asterisk
+  ansible.builtin.shell: fwconsole stop --immediate && fwconsole start
+  changed_when: true

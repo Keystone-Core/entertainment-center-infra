@@ -87,6 +87,53 @@
   changed_when: "'cree' in freepbx_groupe_cree.stdout"
   notify: Recharger FreePBX
 
+# Le son passe toujours par Asterisk : entre le telephone de l'accueil
+# (VLAN 20) et un PC derriere fw01, un flux direct n'arriverait pas.
+- name: Reglages SIP des postes (son par Asterisk, nombre d'appareils)
+  ansible.builtin.shell: |
+    set -e
+    n=0
+    regler() {
+      c=$(mysql -N asterisk -e "INSERT INTO sip (id, keyword, data) VALUES ('$1', '$2', '$3')
+                                ON DUPLICATE KEY UPDATE data = VALUES(data); SELECT ROW_COUNT();")
+      n=$((n + c))
+    }
+    {% for poste in freepbx_postes %}
+    regler {{ poste.numero }} direct_media no
+    regler {{ poste.numero }} max_contacts {{ poste.appareils | default(1) }}
+    {% endfor %}
+    [ "$n" = 0 ] || echo modifie
+  register: freepbx_reglages_postes
+  changed_when: "'modifie' in freepbx_reglages_postes.stdout"
+  notify: Recharger FreePBX
+
+# Les transports PJSIP ne se rechargent pas a chaud : un changement
+# demande de redemarrer Asterisk.
+- name: Adresse externe et reseaux locaux d'Asterisk
+  ansible.builtin.shell: |
+    php -r '
+      $bootstrap_settings["freepbx_auth"] = false;
+      include "/etc/freepbx.conf";
+      $s = FreePBX::Sipsettings();
+      $reseaux = [];
+      foreach (json_decode(getenv("RESEAUX"), true) as $r) {
+        [$net, $mask] = explode("/", $r);
+        $reseaux[] = ["net" => $net, "mask" => $mask];
+      }
+      if ($s->getConfig("externip") !== getenv("EXTERNE") || $s->getConfig("localnets") != $reseaux) {
+        $s->setConfig("externip", getenv("EXTERNE"));
+        $s->setConfig("localnets", $reseaux);
+        echo "modifie";
+      }'
+  environment:
+    EXTERNE: "{{ freepbx_adresse_externe }}"
+    RESEAUX: "{{ freepbx_reseaux_locaux | to_json }}"
+  register: freepbx_nat
+  changed_when: "'modifie' in freepbx_nat.stdout"
+  notify:
+    - Recharger FreePBX
+    - Redemarrer Asterisk
+
 # L'installation demande d'accepter la licence des messages (Creative
 # Commons, June Wallack/Digium, comme les messages anglais d'Asterisk).
 - name: Messages vocaux en {{ freepbx_langue }}

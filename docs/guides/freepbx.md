@@ -9,7 +9,8 @@
 | Modules         | Open source only (installer option `--opensourceonly`): no Sangoma account needed       |
 | Web interface   | `https://freepbx.divertissementestrie.ca/admin` from VLANs 10 and 20; `https://10.10.20.20/admin` from VLAN 10 (self-signed certificate) |
 | SIP             | `10.10.20.20:5060`, UDP, from VLAN 20. FreePBX doesn't enable SIP over TCP by default    |
-| Audio (RTP)     | 10000 to 20000/UDP, from VLAN 20                                                        |
+| SIP from the PCs | `10.85.2.16:5060` (fw01's WAN address), UDP, through the Xray VPN: fw01 forwards to voip01 |
+| Audio (RTP)     | 10000 to 20000/UDP, from VLAN 20 and from the Xray VPN                                  |
 | Voice prompts   | French                                                                                  |
 | Passwords       | `/root/.cde-secrets/voip01/` on `ctrl-iac`, never in the repository                     |
 
@@ -18,12 +19,12 @@
 | Number | Name              | Phone (network log)         |
 | ------ | ----------------- | --------------------------- |
 | 101    | Gérance           | TEL-01                      |
-| 102    | Accueil           | TEL-02                      |
+| 102    | Accueil           | TEL-02, and Nicolas's PC    |
 | 103    | Soutien technique | TEL-03                      |
 | 104    | Poste polyvalent  | TEL-04                      |
 | 600    | Tout le personnel | Ring group: rings all four  |
 
-Each extension has a voicemail box. If nobody answers ring group 600 within 30 seconds, the call goes to the voicemail of 102 (Accueil). The extensions and the ring group are defined in [`ansible/roles/freepbx/defaults/main.yml`](../../ansible/roles/freepbx/defaults/main.yml).
+Each extension has a voicemail box. Extension 102 accepts two devices at once (`appareils: 2` in the role): the reception desk phone and Nicolas's PC ring together. If nobody answers ring group 600 within 30 seconds, the call goes to the voicemail of 102 (Accueil). The extensions and the ring group are defined in [`ansible/roles/freepbx/defaults/main.yml`](../../ansible/roles/freepbx/defaults/main.yml).
 
 Useful codes from any phone:
 
@@ -45,24 +46,53 @@ The role generates every password the first time it runs and keeps it on `ctrl-i
 
 Read one with `cat` on `ctrl-iac`, and never paste it in a chat or a commit. The role sets an extension's passwords only when it creates the extension: a password changed later in the web interface no longer matches the file.
 
-## Setting up a phone
+## Phones and softphones
 
-A phone or softphone needs these settings:
+| Who          | Extension | Device                                   | Server            |
+| ------------ | --------- | ---------------------------------------- | ----------------- |
+| Reception    | 102       | Cisco SPA303, plugged into pve (VLAN 20) | `10.10.20.20`     |
+| Loucas       | 101       | Softphone on his PC, through Xray        | `10.85.2.16`      |
+| Nicolas      | 102       | Softphone on his PC, through Xray        | `10.85.2.16`      |
+| Joshua       | 103       | Softphone on his PC, through Xray        | `10.85.2.16`      |
+| Alexy        | 104       | Softphone on his PC, through Xray        | `10.85.2.16`      |
 
-| Setting            | Value                                       |
-| ------------------ | ------------------------------------------- |
-| SIP server, domain | `10.10.20.20`                               |
-| Port, transport    | `5060`, UDP                                 |
-| User, auth user    | The extension number, for example `102`     |
-| Password           | `poste-<n>-sip` on `ctrl-iac`               |
+Every device uses port `5060` over UDP, the extension number as user and authentication name, and the password `poste-<n>-sip` from `ctrl-iac`. Give each person their own password privately, never in a group chat.
 
-The phone must be in VLAN 20: the firewall of `voip01` only accepts SIP and audio from there. The physical phones get `10.10.20.121` to `.124` by DHCP reservation (network log). Until they are connected, a softphone on a staff workstation (PC-GER-01 to PC-DEV-01, VLAN 20) does the job, for example MicroSIP on Windows.
+### Desk phone
 
-To check a phone is connected, run on `voip01`:
+TEL-02, the reception's Cisco SPA303 (MAC `38:1c:1a:b4:e2:56`), is plugged straight into pve's port `nic0`, which belongs to `vmbr1`. It's in VLAN 20 next to `voip01` and doesn't go through fw01. It has its own power adapter: pve's ports don't supply power.
+
+| Setting | Value |
+| --- | --- |
+| Address | `10.10.20.122` fixed, mask `255.255.255.0`, gateway `10.10.20.1` |
+| DNS and NTP | `10.10.20.1` (fw01), time zone GMT-5 with daylight saving time |
+| Line 1 | Server `10.10.20.20`, user and auth ID `102`, display name `Accueil`, voicemail `*97` |
+| Dial plan | `(*xx\|[1-6]xx\|xx.)`: the `*` codes and the extensions and ring group dial without waiting |
+| Web page | `http://10.10.20.122/admin/advanced`, from VLAN 20 (fw01 blocks HTTP from VLAN 10). User `admin`, password in `/root/.cde-secrets/voip01/telephone-102-admin` |
+
+The phone was set up without touching its keypad: it downloads a settings file when you open `http://<phone>/admin/resync?http://<server>:<port>/<file>.xml`. The file is a `<flat-profile>` whose elements are the names on the web page, with `_1_` for line 1: `Proxy_1_`, `User_ID_1_`, `Password_1_`, `Use_Auth_ID_1_`, `Auth_ID_1_`, `Display_Name_1_`, `Dial_Plan_1_`, `Voice_Mail_Number`, `Connection_Type`, `Static_IP`, `NetMask`, `Gateway`, `Primary_DNS`, `Primary_NTP_Server`, `Time_Zone`, `Admin_Passwd`. Serve it from a VLAN 20 host for a minute (`python3 -m http.server`), then delete it: it contains the passwords. After a factory reset (keypad `****`, then `73738#`), the phone takes its address by DHCP; the settings file sets it back.
+
+### Softphones on the PCs
+
+The PCs reach the phone system from anywhere through the Xray VPN. **As of November 11, 2026, the Xray server (exit `10.85.2.124`) doesn't relay UDP**: SIP and audio never reach fw01, so the softphones can't connect yet. fw01 and `voip01` are ready; once the server relays UDP, nothing else needs to change.
+
+Each PC needs:
+
+1. The Xray client must be in **TUN mode** (also called VPN mode), not system proxy: a proxy only carries web traffic, not SIP and audio. `10.85.0.0/16` must go through the VPN.
+2. Install a softphone: [MicroSIP](https://www.microsip.org/) on Windows, Linphone on Linux (`pkgs.linphone` on NixOS; choose "SIP account", not a linphone.org account).
+3. Enter the server `10.85.2.16`, the extension and its password, transport UDP.
+
+The VPN comes out at `10.85.2.124`, on the cégep network. fw01 forwards UDP 5060 and 10000 to 20000 from that address only to `voip01`, and `voip01`'s firewall accepts it. Asterisk gives its WAN address (`10.85.2.16`) to devices outside `10.10.0.0/16`, and `10.10.20.20` to the others (`freepbx_adresse_externe` and `freepbx_reseaux_locaux` in the role). The audio always goes through Asterisk (`direct_media=no`): a direct stream between the desk phone and a PC behind fw01 wouldn't arrive.
+
+fw01's WAN address comes from the cégep's DHCP. If it changes, update `freepbx_adresse_externe`, run the playbook again and change the server in the softphones.
+
+To check which devices are connected, run on `voip01`:
 
 ```bash
 sudo asterisk -rx "pjsip show contacts"
 ```
+
+The PCs all appear from `10.85.2.124`, on different ports.
 
 ## Running the playbook
 
@@ -81,7 +111,7 @@ The first run takes 20 to 40 minutes, almost all of it the FreePBX installer. Af
 1. Downloads the official installer ([FreePBX/sng_freepbx_debian_install](https://github.com/FreePBX/sng_freepbx_debian_install)), pinned to a commit and checked against its SHA-256.
 2. Applies a local patch, [`installateur.patch`](../../ansible/roles/freepbx/files/installateur.patch): the uninstall script of one commercial module (`oracle_connector`) fails and used to stop the whole installation. The patch continues and deletes the module's leftover files.
 3. Runs the installer with `--opensourceonly --nochrony --skipversion`; the base role keeps managing the clock. The file `/root/.freepbx-installe` marks a finished installation.
-4. Creates the `admin` account, the extensions (`fwconsole bulkimport`), the ring group and the French prompts. The prompts are under a Creative Commons license (June Wallack/Digium), like Asterisk's English ones.
+4. Creates the `admin` account, the extensions (`fwconsole bulkimport`), the ring group and the French prompts. Sets the audio through Asterisk and the number of devices per extension, and the WAN address and local networks for the PCs behind fw01. The prompts are under a Creative Commons license (June Wallack/Digium), like Asterisk's English ones.
 5. Writes the host firewall (`/etc/iptables/rules.v4` and `rules.v6`).
 
 ## Host firewall
@@ -91,6 +121,7 @@ The first run takes 20 to 40 minutes, almost all of it the FreePBX installer. Af
 | VLAN 10                               | SSH (22), web (80, 443)   |
 | `proxy01`                             | Web (80, 443), for a future Caddy site |
 | VLAN 20                               | SIP (5060), RTP (10000 to 20000) |
+| Xray VPN exit (`10.85.2.124`), forwarded by fw01 | SIP (5060), RTP (10000 to 20000) |
 | Anything else                         | Dropped                   |
 
 fail2ban, installed by FreePBX, also blocks addresses that fail to log in too often.
@@ -112,5 +143,8 @@ Then open `https://localhost:8444/admin` and accept the self-signed certificate.
 | A phone doesn't register                             | Wrong password, or the phone isn't in VLAN 20. Watch `/var/log/asterisk/full` on `voip01`. |
 | Calls connect but there's no sound                   | The RTP ports (10000 to 20000/UDP) are blocked between the phone and `voip01`.          |
 | A change made in the web interface has no effect     | Click **Apply Config**, or run `sudo fwconsole reload`.                                 |
+| A PC doesn't register                                | The Xray client isn't in TUN mode, or fw01's forwarding is missing. `pjsip show contacts` lists nothing from `10.85.2.124`. |
+| A PC registers but there's no sound                  | fw01 doesn't forward UDP 10000 to 20000, or fw01's WAN address changed (see above).     |
+| Asterisk is stopped after `fwconsole restart`        | That command checks before Asterisk has finished stopping, and fails. Run `sudo fwconsole start`. To restart, use `sudo fwconsole stop --immediate && sudo fwconsole start`. |
 | `voip01` doesn't answer at all after a rebuild       | fw01 still has the old VM's MAC address: it expires after about 20 minutes, or as soon as `voip01` sends traffic. |
 | The installer failed                                 | Its log is in `/var/log/pbx/freepbx17-install-*.log`. It can be run again: it skips what is already installed. |
