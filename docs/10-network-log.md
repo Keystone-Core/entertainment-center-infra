@@ -125,8 +125,8 @@ The following table lists the listening ports of each service and the networks a
 | mail01      | Email exchange with the Internet                         | 25/TCP                                                             | Internet (if an MX record is published)  |
 | tick01      | osTicket (HTTP)                                          | 80/TCP                                                             | proxy01                                  |
 | bkp01       | Veeam Backup & Replication (console 9392 is local only)  | 443, 6162/TCP                                                      | VLANs 10 and 20; proxy01; pve01          |
-| voip01      | SIP signalling                                           | 5060/UDP and TCP                                                   | VLAN 20 (IP phones)                      |
-| voip01      | Audio streams (RTP)                                      | 10000 to 20000/UDP                                                 | VLAN 20 (IP phones)                      |
+| voip01      | SIP signalling                                           | 5060/UDP and TCP                                                   | VLAN 20 (IP phones); Xray VPN exit (10.85.2.124) through fw01 |
+| voip01      | Audio streams (RTP)                                      | 10000 to 20000/UDP                                                 | VLAN 20 (IP phones); Xray VPN exit (10.85.2.124) through fw01 |
 | voip01      | FreePBX web interface (HTTPS)                            | 443/TCP                                                            | VLAN 10; proxy01                         |
 | web01       | Apache (HTTP)                                            | 80/TCP                                                             | proxy01                                  |
 | web01       | MariaDB                                                  | 3306/TCP                                                           | web01 only (local interface)             |
@@ -164,7 +164,7 @@ The firewall applies a default-deny policy: any flow that is not allowed below i
 | 15  | VLAN 60 (connected devices)   | Internet and other VLANs                     | All                                                                    | Block                   |
 | 16  | Any                           | Any                                          | All                                                                    | Block and log           |
 
-Remote access for the administrators and technical support is planned through the Xray VPN server (10.10.20.200), published on TCP 443 of the WAN interface; the server isn't deployed yet (section 10.1). It replaces Tailscale, planned until version 1.1. Interconnecting the telephony with an external provider is outside the scope of the project: the telephony (FreePBX) remains internal to the centre. Two flows coming from the Internet reach VLAN 20: the VPN on TCP 443 and, if an MX record is published, email on TCP 25 to mail01 (rule 12). These exceptions to the demilitarized-zone separation are each limited to a single port.
+Remote access for the administrators and technical support is planned through the Xray VPN server (10.10.20.200), published on TCP 443 of the WAN interface; the server isn't deployed yet (section 10.1). It replaces Tailscale, planned until version 1.1. Interconnecting the telephony with an external provider is outside the scope of the project: the telephony (FreePBX) remains internal to the centre. The staff's PCs reach it from the Xray VPN, whose exit (10.85.2.124) is on the cégep network: fw01 forwards SIP and RTP from that address only to voip01. As of November 11, 2026, that Xray server doesn't relay UDP, so the softphones can't connect yet. Two flows coming from the Internet reach VLAN 20: the VPN on TCP 443 and, if an MX record is published, email on TCP 25 to mail01 (rule 12). These exceptions to the demilitarized-zone separation are each limited to a single port.
 
 ## 10.3 Configuration as Built on fw01
 
@@ -194,6 +194,8 @@ The rules use the following aliases:
 | Action           | Source | Destination              | Service | Description                    |
 | ---------------- | ------ | ------------------------ | ------- | ------------------------------ |
 | Port forwarding  | Any    | WAN address → 10.10.20.200 | 443/TCP | Xray VPN (not deployed yet)   |
+| Port forwarding  | 10.85.2.124 | WAN address → 10.10.20.20 | 5060/UDP | FreePBX SIP, softphones of the PCs through the Xray VPN |
+| Port forwarding  | 10.85.2.124 | WAN address → 10.10.20.20 | 10000 to 20000/UDP | FreePBX audio (RTP), same softphones |
 
 **LAN — VLAN 20 (internal)**
 

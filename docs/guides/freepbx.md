@@ -74,7 +74,9 @@ The phone was set up without touching its keypad: it downloads a settings file w
 
 ### Softphones on the PCs
 
-The PCs reach the phone system from anywhere through the Xray VPN:
+The PCs reach the phone system from anywhere through the Xray VPN. **As of November 11, 2026, the Xray server (exit `10.85.2.124`) doesn't relay UDP**: SIP and audio never reach fw01, so the softphones can't connect yet. fw01 and `voip01` are ready; once the server relays UDP, nothing else needs to change.
+
+Each PC needs:
 
 1. The Xray client must be in **TUN mode** (also called VPN mode), not system proxy: a proxy only carries web traffic, not SIP and audio. `10.85.0.0/16` must go through the VPN.
 2. Install a softphone: [MicroSIP](https://www.microsip.org/) on Windows, Linphone on Linux (`pkgs.linphone` on NixOS; choose "SIP account", not a linphone.org account).
