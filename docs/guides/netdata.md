@@ -40,7 +40,8 @@ Since version 2.0, the Netdata dashboard shows **at most five servers at a time*
 The same data is available as JSON, for scripts:
 
 ```bash
-curl -s http://10.10.20.22:19999/api/v1/info | jq '.mirrored_hosts'            # servers seen by mon01
+curl -s http://10.10.20.22:19999/api/v1/info \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["mirrored_hosts"])'   # servers seen by mon01
 curl -s 'http://10.10.20.22:19999/host/voip01/api/v1/data?chart=system.cpu&after=-60&points=1&group=average'
 curl -s http://10.10.20.22:19999/host/k3s01/api/v1/alarms                         # active alerts
 ```

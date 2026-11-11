@@ -49,6 +49,10 @@ Techniques de l'informatique (Computer Science Technology)
 
 ---
 
+## Demos
+
+[Demos](demos/README.md): one file per team member, with a full demo of their part and the explanations to give. [Alexy Després](demos/alexy-despres.md): Terraform, k3s, the website, FreePBX, Netdata and the backup script.
+
 ## Guides
 
 - [Deploying Services on k3s](guides/deploying-services-on-k3s.md): running a service on the `k3s01` cluster and publishing it over HTTPS through `proxy01`
