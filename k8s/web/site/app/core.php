@@ -11,6 +11,8 @@ const MAX_SEATS = 6;                     // places per reservation
 const ROOM_TURNOVER_MIN = 15;            // between two screenings in a room
 const POSTER_MAX_BYTES = 5 * 1024 * 1024;
 const POSTER_TYPES = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+const RESET_LINK_HOURS = 24;             // validity of a link to choose a new password
+const MAIL_FROM_NAME = 'Centre de divertissement de l’Estrie';
 
 const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 const MOIS = [1 => 'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet',
@@ -205,4 +207,98 @@ function booking_code(): string
         $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
     }
     return $code;
+}
+
+// ---------------------------------------------------------------------
+// Forgotten passwords: one-time links, sent by email or given by the staff.
+// Only a hash of the token is stored, so the table alone opens no account.
+
+/** The site's public address, for the links in emails. */
+function site_url(): string
+{
+    return rtrim(getenv('SITE_URL') ?: 'https://www.divertissementestrie.ca', '/');
+}
+
+/** A new link to choose a password. It replaces the account's older links. */
+function create_reset_link(int $user_id): string
+{
+    $token = bin2hex(random_bytes(32));
+    query('DELETE FROM password_resets WHERE user_id = ?', [$user_id]);
+    query('INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+        [$user_id, hash('sha256', $token), sql_time(now()->modify('+' . RESET_LINK_HOURS . ' hours'))]);
+    return site_url() . '/mot-de-passe/' . $token;
+}
+
+/** @return array{user_id: int, name: string, email: string, role: string}|null the account, if the link is still valid */
+function find_reset(string $token): ?array
+{
+    $row = query(
+        'SELECT r.user_id, u.name, u.email, u.role
+         FROM password_resets r JOIN users u ON u.id = r.user_id
+         WHERE r.token_hash = ? AND r.expires_at > ?',
+        [hash('sha256', $token), sql_time(now())],
+    )->fetch();
+    return $row === false ? null : ['user_id' => (int) $row['user_id']] + $row;
+}
+
+/**
+ * Sends a plain-text email through the SMTP server in SMTP_HOST (mail01),
+ * logging in with SMTP_USER and SMTP_PASSWORD if they're set. Returns false
+ * when no server is set up or the server refuses the message.
+ */
+function send_mail(string $to, string $subject, string $body): bool
+{
+    $host = getenv('SMTP_HOST') ?: '';
+    if ($host === '' || filter_var($to, FILTER_VALIDATE_EMAIL) === false) {
+        return false;
+    }
+    $from = getenv('SMTP_FROM') ?: 'no-reply@divertissementestrie.ca';
+    $port = (int) (getenv('SMTP_PORT') ?: 587);
+    $socket = @stream_socket_client("tcp://$host:$port", $errno, $error, 5);
+    if ($socket === false) {
+        error_log("SMTP $host:$port unreachable: $error");
+        return false;
+    }
+    stream_set_timeout($socket, 10);
+
+    $encode = fn (string $text): string => '=?UTF-8?B?' . base64_encode($text) . '?=';
+    $message = implode("\r\n", [
+        'From: ' . $encode(MAIL_FROM_NAME) . " <$from>",
+        "To: <$to>",
+        'Subject: ' . $encode($subject),
+        'Date: ' . date(DATE_RFC2822),
+        'Message-ID: <' . bin2hex(random_bytes(12)) . '@divertissementestrie.ca>',
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: base64',
+        '',
+        rtrim(chunk_split(base64_encode(str_replace("\n", "\r\n", $body)), 76, "\r\n")),
+    ]);
+
+    // Each step: the line to send (null for the greeting) and the reply code expected.
+    $steps = [[null, '220'], ['EHLO ' . (gethostname() ?: 'site'), '250']];
+    $user = getenv('SMTP_USER') ?: '';
+    if ($user !== '') {
+        $steps[] = ['AUTH LOGIN', '334'];
+        $steps[] = [base64_encode($user), '334'];
+        $steps[] = [base64_encode(getenv('SMTP_PASSWORD') ?: ''), '235'];
+    }
+    array_push($steps, ["MAIL FROM:<$from>", '250'], ["RCPT TO:<$to>", '250'], ['DATA', '354'], [$message . "\r\n.", '250']);
+
+    foreach ($steps as [$line, $code]) {
+        if ($line !== null) {
+            fwrite($socket, $line . "\r\n");
+        }
+        do {
+            $reply = fgets($socket, 515);
+        } while ($reply !== false && ($reply[3] ?? '') === '-');
+        if ($reply === false || !str_starts_with($reply, $code)) {
+            error_log('SMTP refused the message: ' . trim((string) $reply));
+            fclose($socket);
+            return false;
+        }
+    }
+    fwrite($socket, "QUIT\r\n");
+    fclose($socket);
+    return true;
 }

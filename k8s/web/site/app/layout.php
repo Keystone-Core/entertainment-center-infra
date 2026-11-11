@@ -70,7 +70,8 @@ $asset_version = (int) @filemtime('/var/www/html/public/site.css');
     <div class="wrap footer-inner">
       <div>
         <p class="footer-name"><?= e(CENTRE_NAME) ?></p>
-        <p><?= e(CENTRE_CITY) ?><br><?= e(CENTRE_PHONE) ?></p>
+        <p><?= e(CENTRE_ADDRESS) ?><br><?= e(CENTRE_CITY) ?>&nbsp; <?= e(CENTRE_POSTAL_CODE) ?></p>
+        <p><?= e(CENTRE_PHONE) ?><br><a href="mailto:<?= e(CENTRE_EMAIL) ?>"><?= e(CENTRE_EMAIL) ?></a></p>
       </div>
       <div>
         <h2 class="footer-heading">Heures d’ouverture</h2>

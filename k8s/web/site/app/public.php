@@ -88,7 +88,7 @@ function page_home(): void
     </div>
     <div>
       <h3>Serveurs de jeux</h3>
-      <p><?= $server_count ?> serveurs ouverts aux joueurs, depuis nos postes ou de chez vous. L’accès est gratuit.</p>
+      <p><?= $server_count ?> serveurs ouverts aux joueurs, depuis nos postes publics. L’accès est gratuit.</p>
       <a href="/jeux">Adresses des serveurs</a>
     </div>
     <div>
@@ -223,7 +223,7 @@ function page_games(): void
     ob_start(); ?>
 <div class="page-head">
   <h1>Serveurs de jeux</h1>
-  <p class="lead">Le centre héberge des serveurs ouverts à tous. Jouez depuis nos postes publics, ou de chez vous avec votre propre copie du jeu. L’accès est gratuit.</p>
+  <p class="lead">Le centre héberge des serveurs ouverts à tous. Jouez-y depuis nos postes publics, avec l’adresse indiquée : le jeu est déjà installé. L’accès est gratuit, seul le poste se paie.</p>
 </div>
 <?php if ($servers === []): ?>
   <p class="empty">Aucun serveur n’est ouvert pour le moment.</p>
@@ -289,7 +289,7 @@ function page_info(): void
     ob_start(); ?>
 <div class="page-head">
   <h1>Heures et tarifs</h1>
-  <p class="lead">Le <?= e(CENTRE_NAME) ?> est situé à <?= e(CENTRE_CITY) ?>. Toutes les places se paient à l’accueil, en argent comptant ou par carte.</p>
+  <p class="lead">Le <?= e(CENTRE_NAME) ?> est situé au <?= e(CENTRE_ADDRESS) ?>, à <?= e(CENTRE_CITY) ?>. Toutes les places se paient à l’accueil, en argent comptant ou par carte. Les prix comprennent les taxes.</p>
 </div>
 <div class="info-grid">
   <section aria-labelledby="info-hours">
@@ -308,7 +308,8 @@ function page_info(): void
   </section>
   <section aria-labelledby="info-contact">
     <h2 id="info-contact">Nous joindre</h2>
-    <p>Par téléphone au <?= e(CENTRE_PHONE) ?>, pendant les heures d’ouverture.</p>
+    <p>Par téléphone au <?= e(CENTRE_PHONE) ?>, pendant les heures d’ouverture, ou par courriel à <a href="mailto:<?= e(CENTRE_EMAIL) ?>"><?= e(CENTRE_EMAIL) ?></a>.</p>
+    <p><?= e(CENTRE_ADDRESS) ?><br><?= e(CENTRE_CITY) ?>&nbsp; <?= e(CENTRE_POSTAL_CODE) ?></p>
     <p>Pour une réservation de groupe, appelez-nous au moins deux jours à l’avance.</p>
   </section>
 </div>
@@ -353,7 +354,7 @@ function status_checks(): array
     try {
         $version = (string) db()->query('SELECT VERSION()')->fetchColumn();
         $tables = db()->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
-        $wanted = ['users', 'rooms', 'films', 'screenings', 'reservations', 'announcements', 'game_servers'];
+        $wanted = ['users', 'rooms', 'films', 'screenings', 'reservations', 'password_resets', 'announcements', 'game_servers'];
         $missing = array_values(array_diff($wanted, $tables));
         $checks['database'] = $check(true, 'MariaDB ' . $version);
         $checks['schema'] = $missing === []

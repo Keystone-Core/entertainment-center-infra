@@ -1026,6 +1026,11 @@ a:hover {
   gap: 0.75rem;
 }
 
+.copy-link {
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
 /* Forms ------------------------------------------------------------ */
 
 .auth {

@@ -3,23 +3,26 @@
 #
 #   sh k8s/web/smoke-test.sh [traefik address]
 #
-# It visits the public pages, creates customer and staff accounts, adds a
-# film with a poster and a screening 30 days ahead in Salle 2 (24 places),
-# fills the room, cancels a reservation, then deletes everything it made.
+# It visits the public pages, creates customer and staff accounts, resets a
+# password with a link from the staff, gives and takes back the staff
+# section, deletes an account, adds a film with a poster and a screening 30
+# days ahead in Salle 2 (24 places), fills the room, cancels a reservation,
+# then deletes everything it made.
 # curl --resolve sends the requests straight to Traefik, so no DNS record
 # or proxy01 is needed. It uses HTTPS (port 443, Traefik's self-signed
 # certificate): from VLAN 10 the firewall lets HTTPS through to k3s01, but
 # not HTTP, which only proxy01 may use. Set SCHEME=http for a local test.
 # kubectl runs cli.php to promote the staff account; set PHP_EXEC to run it
-# another way (for example `docker exec cde-php`).
+# another way (for example `docker exec cde-php`). For the development server
+# on web01, run it there: SCHEME=http PMA= PHP_EXEC="sudo cde-env" sh smoke-test.sh 127.0.0.1
 set -eu
 
 PHP_EXEC=${PHP_EXEC:-kubectl -n web exec deploy/php --}
 
 ADDR=${1:-10.10.20.31}
 SCHEME=${SCHEME:-https}
-WEB=web.cde.lan
-PMA=pma.cde.lan
+WEB=${WEB:-web.cde.lan}
+PMA=${PMA-pma.cde.lan}                  # empty: no phpMyAdmin to check
 SITE=$SCHEME://$WEB
 if [ "$SCHEME" = https ]; then PORT=443; else PORT=80; fi
 
@@ -50,7 +53,7 @@ check() {
 # (Pipe it to `grep >/dev/null`, not `grep -q`: -q stops reading early and
 # curl then reports a write error.)
 web() {
-    curl -sSk --max-time 60 --resolve "$WEB:$PORT:$ADDR" --resolve "$PMA:$PORT:$ADDR" \
+    curl -sSk --max-time 60 --resolve "$WEB:$PORT:$ADDR" --resolve "${PMA:-$WEB}:$PORT:$ADDR" \
         -b "$JAR" -c "$JAR" "$@"
 }
 
@@ -110,7 +113,7 @@ cleanup() {
         post "/gestion/films/$FILM_ID/supprimer" "/gestion/films/$FILM_ID" >/dev/null || true
     fi
     for email in $USERS; do
-        cli delete-user "$email" || true
+        cli delete-user "$email" 2>/dev/null || true      # some are deleted by the test
     done
     rm -rf "$WORK"
 }
@@ -127,7 +130,7 @@ second=$(web "$SITE/status" | sed -n 's/.*"session_visits": \([0-9]*\).*/\1/p')
 expect "session kept between requests" "$second" "$((${first:-0} + 1))"
 
 # Public pages.
-for page in / /programmation /jeux /postes /infos /films/metropolis /connexion /inscription; do
+for page in / /programmation /jeux /postes /infos /films/metropolis /connexion /inscription /mot-de-passe-oublie; do
     expect "page $page" "$(status "$SITE$page")" 200
 done
 check "home page names the centre" page_has / "Centre de divertissement de l’Estrie"
@@ -152,6 +155,62 @@ expect "customers can't open the staff section" "$(status "$SITE/gestion")" 403
 register staff
 cli staff "$(email_of staff)"
 expect "staff opens the staff section" "$(status "$SITE/gestion")" 200
+
+# Forgotten passwords: the form answers the same for any email, and the
+# staff create one-time links from /gestion/comptes.
+as visitor
+web --data-urlencode "csrf=$(token /mot-de-passe-oublie)" --data-urlencode "email=personne-$RUN@exemple.test" \
+    "$SITE/mot-de-passe-oublie" > "$WORK/forgot.html"
+check "an unknown email gets the usual answer" grep -qF "Si un compte existe" "$WORK/forgot.html"
+as alice
+expect "customers can't open the accounts page" "$(status "$SITE/gestion/comptes")" 403
+
+as staff
+account_id() {
+    web "$SITE/gestion/comptes?q=$(email_of "$1")" | grep -o '/gestion/comptes/[0-9]*/lien' | head -n 1 | tr -dc 0-9
+}
+alice_id=$(account_id alice)
+staff_id=$(account_id staff)
+expect "the staff create a password link for alice" "$(post "/gestion/comptes/$alice_id/lien" /gestion/comptes)" "303 /gestion/comptes"
+link=$(web "$SITE/gestion/comptes" | grep -o '/mot-de-passe/[0-9a-f]\{64\}' | head -n 1)
+check "the accounts page showed the link" test -n "$link"
+if page_has /gestion/comptes "$link"; then fail "the link is shown only once"; else pass "the link is shown only once"; fi
+expect "the staff can't remove their own access" "$(post "/gestion/comptes/$staff_id/role" /gestion/comptes)" "303 /gestion/comptes"
+expect "the staff can't delete their own account" "$(post "/gestion/comptes/$staff_id/supprimer" /gestion/comptes)" "303 /gestion/comptes"
+expect "the staff member keeps the staff section" "$(status "$SITE/gestion")" 200
+
+as alice
+new_password=$(head -c 18 /dev/urandom | base64)
+expect "alice opens the link" "$(status "$SITE$link")" 200
+expect "alice chooses a new password" "$(post "$link" "$link" --data-urlencode "password=$new_password")" "303 /compte"
+expect "the link works only once" "$(status "$SITE$link")" 404
+expect "alice logs out" "$(post /deconnexion /compte)" "303 /"
+expect "the old password is refused" "$(post /connexion /connexion \
+    --data-urlencode "email=$(email_of alice)" --data-urlencode "password=$PASSWORD")" 422
+expect "the new password works" "$(post /connexion /connexion \
+    --data-urlencode "email=$(email_of alice)" --data-urlencode "password=$new_password")" "303 /compte"
+
+as staff
+expect "the staff give alice the staff section" "$(post "/gestion/comptes/$alice_id/role" /gestion/comptes)" "303 /gestion/comptes"
+as alice
+expect "alice opens the staff section" "$(status "$SITE/gestion")" 200
+as staff
+expect "the staff take it back" "$(post "/gestion/comptes/$alice_id/role" /gestion/comptes)" "303 /gestion/comptes"
+as alice
+expect "alice can't open it any more" "$(status "$SITE/gestion")" 403
+
+register frank
+as staff
+expect "the staff delete frank's account" "$(post "/gestion/comptes/$(account_id frank)/supprimer" /gestion/comptes)" "303 /gestion/comptes"
+as frank
+expect "frank is logged out" "$(status "$SITE/compte")" "303 /connexion"
+# shellcheck disable=SC2086 # PHP_EXEC is a command with its arguments
+cli_link=$($PHP_EXEC php /var/www/html/app/cli.php reset-link "$(email_of staff)")
+case $cli_link in
+    */mot-de-passe/????????????????????????????????????????????????????????????????) pass "cli.php reset-link prints a link" ;;
+    *) fail "cli.php reset-link prints a link (got '$cli_link')" ;;
+esac
+as staff
 
 # A film with a poster.
 printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' \
@@ -219,7 +278,9 @@ as staff
 check "the front desk list counts 19 of 24 places" page_has "/gestion/seances/$screening" "19 places réservées sur 24"
 
 # phpMyAdmin.
-if web "$SCHEME://$PMA/" | grep 'phpMyAdmin' >/dev/null; then
+if [ -z "$PMA" ]; then
+    echo "skip  phpMyAdmin (PMA is empty)"
+elif web "$SCHEME://$PMA/" | grep 'phpMyAdmin' >/dev/null; then
     pass "phpMyAdmin login page"
 else
     fail "phpMyAdmin login page"

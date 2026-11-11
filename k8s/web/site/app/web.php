@@ -26,7 +26,15 @@ header('X-Frame-Options: DENY');
 header('Referrer-Policy: same-origin');
 header("Content-Security-Policy: default-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'");
 
-// Sessions are stored in the pod, so restarting it logs everyone out.
+// Sessions are files on their own volume, so restarting the pod logs no one
+// out. Without that folder (a test without the volume), PHP's default is used.
+const SESSION_DIR = '/var/www/html/storage/sessions';
+if (is_dir(SESSION_DIR) && is_writable(SESSION_DIR)) {
+    ini_set('session.save_path', SESSION_DIR);
+}
+ini_set('session.gc_maxlifetime', '7200');      // logged out after 2 hours without activity
+ini_set('session.gc_probability', '1');
+ini_set('session.gc_divisor', '100');
 ini_set('session.use_strict_mode', '1');
 ini_set('session.cookie_samesite', 'Lax');
 session_name('cde_session');

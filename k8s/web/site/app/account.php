@@ -113,6 +113,7 @@ function login_form(string $error = '', string $email = ''): void
     <input type="password" id="password" name="password" autocomplete="current-password" required>
     <button class="button" type="submit">Me connecter</button>
   </form>
+  <p><a href="/mot-de-passe-oublie">Mot de passe oublié ?</a></p>
   <p>Pas encore de compte ? <a href="/inscription">Créez-en un</a></p>
 </div>
 <?php
@@ -151,6 +152,111 @@ function page_logout(): void
     session_regenerate_id(true);
     flash('Vous êtes déconnecté.');
     redirect('/');
+}
+
+// ---------------------------------------------------------------------
+// Forgotten password. The answer is the same whether the account exists or
+// not, so the form can't be used to find out who has an account.
+
+function page_forgot_form(): void
+{
+    ob_start(); ?>
+<div class="auth">
+  <h1>Mot de passe oublié</h1>
+  <p class="lead">Entrez le courriel de votre compte. Nous vous enverrons un lien pour choisir un nouveau mot de passe.</p>
+  <form class="form" method="post" action="/mot-de-passe-oublie">
+    <?= csrf_field() ?>
+    <label for="email">Courriel</label>
+    <input type="email" id="email" name="email" autocomplete="email" required maxlength="190">
+    <button class="button" type="submit">Recevoir un lien</button>
+  </form>
+  <p>Vous pouvez aussi demander un lien à l’accueil, ou au <?= e(CENTRE_PHONE) ?>.</p>
+</div>
+<?php
+    render('Mot de passe oublié', (string) ob_get_clean(), 'compte');
+}
+
+function page_forgot(): void
+{
+    $email = mb_strtolower(field('email'));
+    $user = query('SELECT id, name, email FROM users WHERE email = ?', [$email])->fetch();
+    // At most one email every 5 minutes per account.
+    $recent = $user === false ? true : (bool) query(
+        'SELECT 1 FROM password_resets WHERE user_id = ? AND created_at > ?',
+        [$user['id'], sql_time(now()->modify('-5 minutes'))],
+    )->fetchColumn();
+    if ($user !== false && !$recent) {
+        $link = create_reset_link((int) $user['id']);
+        send_mail($user['email'], 'Choisir un nouveau mot de passe',
+            "Bonjour {$user['name']},\n\n"
+            . "Pour choisir un nouveau mot de passe, ouvrez ce lien dans les " . RESET_LINK_HOURS . " prochaines heures :\n\n"
+            . "$link\n\n"
+            . "Si vous n’avez rien demandé, ignorez ce message : votre mot de passe ne change pas.\n\n"
+            . CENTRE_NAME . "\n" . CENTRE_PHONE . "\n");
+    }
+
+    ob_start(); ?>
+<div class="auth">
+  <h1>Vérifiez vos courriels</h1>
+  <p class="lead">Si un compte existe avec cette adresse, nous venons de lui envoyer un lien valable <?= RESET_LINK_HOURS ?>&nbsp;heures.</p>
+  <p>Rien reçu après quelques minutes ? Vérifiez vos indésirables, ou demandez un lien à l’accueil ou au <?= e(CENTRE_PHONE) ?>.</p>
+  <p><a href="/connexion">Retour à la connexion</a></p>
+</div>
+<?php
+    render('Mot de passe oublié', (string) ob_get_clean(), 'compte');
+}
+
+function reset_form(string $token, array $reset, string $error = ''): void
+{
+    ob_start(); ?>
+<div class="auth">
+  <h1>Nouveau mot de passe</h1>
+  <p class="lead">Compte de <?= e($reset['name']) ?> (<?= e($reset['email']) ?>).</p>
+  <?= $error === '' ? '' : '<div class="form-errors" role="alert"><p>' . e($error) . '</p></div>' ?>
+  <form class="form" method="post" action="/mot-de-passe/<?= e($token) ?>">
+    <?= csrf_field() ?>
+    <label for="password">Nouveau mot de passe</label>
+    <input type="password" id="password" name="password" autocomplete="new-password" required minlength="8" aria-describedby="password-hint">
+    <p class="hint" id="password-hint">Au moins 8 caractères.</p>
+    <button class="button" type="submit">Enregistrer</button>
+  </form>
+</div>
+<?php
+    render('Nouveau mot de passe', (string) ob_get_clean(), 'compte');
+}
+
+function expired_reset(): void
+{
+    http_response_code(404);
+    render('Lien expiré', '<div class="auth"><h1>Ce lien ne fonctionne plus</h1>'
+        . '<p class="lead">Il a déjà servi, ou il date de plus de ' . RESET_LINK_HOURS . "\u{a0}heures.</p>"
+        . '<p><a href="/mot-de-passe-oublie">Demander un nouveau lien</a></p></div>', 'compte');
+}
+
+function page_reset_form(string $token): void
+{
+    $reset = find_reset($token);
+    $reset === null ? expired_reset() : reset_form($token, $reset);
+}
+
+function page_reset(string $token): void
+{
+    $reset = find_reset($token);
+    if ($reset === null) {
+        expired_reset();
+        return;
+    }
+    $password = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
+    if (strlen($password) < 8) {
+        http_response_code(422);
+        reset_form($token, $reset, 'Choisissez un mot de passe d’au moins 8 caractères.');
+        return;
+    }
+    query('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($password, PASSWORD_DEFAULT), $reset['user_id']]);
+    query('DELETE FROM password_resets WHERE user_id = ?', [$reset['user_id']]);
+    log_in($reset['user_id']);
+    flash('Mot de passe changé. Vous êtes connecté.');
+    redirect($reset['role'] === 'staff' ? '/gestion' : '/compte');
 }
 
 /** Reservations of one user, with their screening. */
