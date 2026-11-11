@@ -4,7 +4,7 @@ The centre's public website, in French, running on the `k3s01` cluster as a LAMP
 
 | Part | Runs as | Address |
 | ---- | ------- | ------- |
-| Apache + PHP 8.4 (FPM) | Deployment `php`, image `serversideup/php` | `https://www.divertissementestrie.ca` (Caddy, then Traefik) |
+| Apache + PHP 8.4 (FPM) | Deployment `php`, image `serversideup/php` | `https://www.divertissementestrie.ca` (Caddy, then Traefik); `:8443` from the cégep network and the VPN |
 | MariaDB 11.8 | Deployment `mariadb`, PVC `mariadb-data` | Service `mariadb:3306`, inside the cluster only |
 | phpMyAdmin 5.2 | Deployment `phpmyadmin` | `https://phpmyadmin.divertissementestrie.ca` (Caddy, then Traefik) |
 | Posters | PVC `uploads` | Mounted on the `php` pod, outside the web root |

@@ -60,6 +60,9 @@ The token is copied to `proxy01` on the first run. Later runs don't need it: wit
    | `reseaux` | Only these networks may open the site; Caddy answers 403 to the others                                       |
    | `ca`      | The upstream uses HTTPS with a private or self-signed certificate: path of the public certificate that vouches for it, relative to `ansible/` (for example `files/ca/proxmox.pem`). Caddy verifies the upstream with it. |
    | `nom_tls` | Name to verify in that certificate, when it doesn't contain the upstream's address |
+   | `redirige_vers` | Redirects to `<this name>.divertissementestrie.ca` instead of proxying (no `upstream`). Clients that came through fw01's port 8443 keep that port |
+
+   The name `"@"` stands for the bare domain, `divertissementestrie.ca`.
 
 2. Check that the firewall allows `proxy01` to reach the upstream: its address must be in `SERVICES_HTTP` and its port in `PORTS_HTTP` on fw01, or a dedicated DMZ rule allows it (`SERVICES_HTTPS` lists the upstreams reached on 443). Add them if needed and record the change in the network log.
 3. Make the name resolve to `proxy01` inside the centre, on both DNS servers:
@@ -77,7 +80,7 @@ The DMZ only lets web traffic out, so Caddy can't query Cloudflare's name server
 
 ## Published sites
 
-Every site is open to VLANs 10 and 20 only.
+Every site is open to VLANs 10 and 20 only, except the website: see [from the cégep network and the VPN](#from-the-cégep-network-and-the-vpn).
 
 | Address                                  | Service       | Upstream                                 | Firewall (DMZ)                                  |
 | ---------------------------------------- | ------------- | ---------------------------------------- | ----------------------------------------------- |
@@ -88,11 +91,28 @@ Every site is open to VLANs 10 and 20 only.
 | `https://osticket.divertissementestrie.ca`   | osTicket      | `10.10.20.12:80`                         | Rule 4                                          |
 | `https://homarr.divertissementestrie.ca`     | Homarr        | `10.10.20.41:7575`                       | Rule 4                                          |
 | `https://www.divertissementestrie.ca`        | Website       | `10.10.20.31:80` (Traefik)               | Rule 4                                          |
+| `https://divertissementestrie.ca`            | Redirects to `www` | —                                   | —                                               |
 | `https://phpmyadmin.divertissementestrie.ca` | phpMyAdmin    | `10.10.20.31:80` (Traefik)               | Rule 4                                          |
 
 The public certificates of the HTTPS upstreams are in [`ansible/files/ca/`](../../ansible/files/ca/). If a service replaces its certificate, copy the new one there and run the playbook, or Caddy answers `502`. pfSense's expires in April 2027.
 
 pfSense refuses a name it doesn't know: its public name is in *System → Advanced → Admin Access → Alternate Hostnames*.
+
+### From the cégep network and the VPN
+
+The website is also reachable from the cégep network and through the Xray VPN, at `https://www.divertissementestrie.ca:8443`. `https://divertissementestrie.ca:8443` redirects there.
+
+| Piece        | Configuration                                                                                       |
+| ------------ | --------------------------------------------------------------------------------------------------- |
+| fw01         | Port forwarding of its WAN address, TCP 8443, to `10.10.80.10:443` (443 is taken by the VPN's forwarding) |
+| Public DNS   | Cloudflare: `www` and the bare domain, A records to fw01's WAN address (`10.85.2.16`), DNS only, TTL 5 minutes |
+| Caddy        | `www` and the bare domain have no `reseaux` restriction                                              |
+
+- fw01's WAN address is a private address on the cégep network: the Internet can't reach it. Opening the site to the Internet needs the cégep's agreement.
+- That address comes from the cégep's DHCP. If it changes, update both records in Cloudflare (*DNS → Records*).
+- The other names have no public record. If a client still reaches them through port 8443, Caddy answers 403.
+- The password reset links in emails use `SITE_URL` (`https://www.divertissementestrie.ca`, without the port): from the cégep network, add `:8443` to the address.
+- Inside the centre, `dc01` and fw01 still resolve both names to `proxy01`, so the address without `:8443` keeps working there. The bare domain has its own zone on `dc01`: a public name added later under the domain must also be added there, or it won't resolve inside the centre.
 
 ## Checking
 
