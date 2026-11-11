@@ -13,9 +13,74 @@
 | Bridge  | Port             | Use                                                                 |
 | ------- | ---------------- | ------------------------------------------------------------------- |
 | `vmbr0` | `nic3`           | Cégep network: the host itself and the WAN of `fw01`                |
-| `vmbr1` | None             | The centre's VLANs, VLAN-aware. VLAN 20 is untagged                 |
+| `vmbr1` | `nic0`           | The centre's VLANs, VLAN-aware. VLAN 20 is untagged. `nic0` has the reception's IP phone (TEL-02) plugged in directly |
 
-`nic0` to `nic2` and `nic4` to `nic7` are free. **Never connect `vmbr1` to the cégep network**: it would bypass the firewall, and `dc01` would serve DHCP to the cégep's machines.
+`nic1`, `nic2` and `nic4` to `nic7` are free. **Never connect `vmbr1` to the cégep network**: it would bypass the firewall, and `dc01` would serve DHCP to the cégep's machines.
+
+## Xray Bridge
+
+The team's VPN comes into the cégep network through an Xray bridge running on `pve` itself. It uses Xray's reverse proxy:
+
+1. The bridge opens an outgoing connection to the portal, an Xray server outside the centre (`184.163.50.238`, TCP 443, VLESS with REALITY). No incoming port is needed at the cégep.
+2. The VPN clients connect to the same portal, which sends their traffic back through that connection.
+3. The bridge lets the traffic out as is: it comes from `pve`'s address, `10.85.2.127`, on the cégep network.
+
+From the VPN, you reach `pve`, the cégep network and `fw01`'s WAN address, not the VLANs: `pve` has no route to `10.10.0.0/16` ([network log](../10-network-log.md), section 10.1).
+
+| Item          | Value                                                                       |
+| ------------- | --------------------------------------------------------------------------- |
+| Service       | `xray-bridge`, enabled, restarted on failure                                 |
+| Binary        | `/usr/local/bin/xray`, Xray 26.3.27 (`Xray-linux-64.zip` from the Xray-core releases) |
+| Configuration | `/etc/xray-bridge/config.json`                                               |
+| Copy          | [`proxmox/xray-bridge/`](../../proxmox/xray-bridge/): the systemd unit, and the configuration encrypted with Ansible Vault |
+| Portal        | Its configuration is on that server, not in this repository                 |
+
+The configuration holds the client ID and the REALITY keys. Its copy is encrypted with the same key as the MQTT passwords, `~/.vault_pass_cde`, which exists only on `ctrl-iac`. To read it, on `ctrl-iac`:
+
+```bash
+cd /root/entertainment-center-infra/ansible
+ansible-vault view ../proxmox/xray-bridge/config.json.vault
+```
+
+### Restoring the Bridge
+
+Install the Xray binary first, then:
+
+1. On `ctrl-iac`, decrypt the configuration:
+   ```bash
+   cd /root/entertainment-center-infra/ansible
+   ansible-vault decrypt --output /root/xray-config.json ../proxmox/xray-bridge/config.json.vault
+   ```
+2. On `pve`, copy both files from `ctrl-iac`, then delete the decrypted copy:
+   ```bash
+   mkdir -p /etc/xray-bridge
+   pct pull 110 /root/xray-config.json /etc/xray-bridge/config.json --perms 600
+   pct exec 110 -- shred -u /root/xray-config.json
+   pct pull 110 /root/entertainment-center-infra/proxmox/xray-bridge/xray-bridge.service /etc/systemd/system/xray-bridge.service
+   ```
+3. On `pve`, start it:
+   ```bash
+   systemctl daemon-reload
+   systemctl enable --now xray-bridge
+   ```
+
+`ss -tnp | grep xray` then shows the connection to `184.163.50.238:443`.
+
+### Updating the Copy
+
+After changing `/etc/xray-bridge/config.json` on `pve`:
+
+1. On `pve`:
+   ```bash
+   pct push 110 /etc/xray-bridge/config.json /root/xray-config.json --perms 600
+   ```
+2. On `ctrl-iac`:
+   ```bash
+   cd /root/entertainment-center-infra/ansible
+   ansible-vault encrypt --output ../proxmox/xray-bridge/config.json.vault /root/xray-config.json
+   shred -u /root/xray-config.json
+   ```
+3. Commit the new `config.json.vault`.
 
 ## Storage
 

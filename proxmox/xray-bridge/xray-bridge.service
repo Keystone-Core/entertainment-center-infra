@@ -1,0 +1,18 @@
+[Unit]
+Description=Xray reverse bridge (college -> home portal, exposes Proxmox UI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/xray run -config /etc/xray-bridge/config.json
+Restart=on-failure
+RestartSec=10
+# Durcissement minimal
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/log
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
