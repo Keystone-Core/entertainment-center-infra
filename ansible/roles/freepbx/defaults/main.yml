@@ -40,7 +40,7 @@ freepbx_reseaux_ssh:
   - 10.10.10.0/24        # VLAN 10, gestion
 freepbx_reseaux_sip:
   - 10.10.20.0/24        # VLAN 20, telephones IP
-  - 10.85.2.124/32       # Sortie du VPN Xray : softphones des PC, par fw01
+  - 10.85.2.127/32       # Pont Xray sur pve (sortie du VPN) : softphones des PC, par fw01
 freepbx_reseaux_web:
   - 10.10.10.0/24        # VLAN 10 (HTTPS, regle 1)
   - 10.10.80.10/32       # proxy01, pour une publication par Caddy
