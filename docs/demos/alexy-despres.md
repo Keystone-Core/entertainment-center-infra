@@ -1,17 +1,17 @@
 # Demo: Alexy Després
 
-My part of the project is the Linux side: creating the servers as code, running containers, the centre's website, the phone system, monitoring and an automation script. This document is the full demo, about 25 minutes, with what to say and what to show in each part.
+My part of the project is the Linux side: creating the servers as code, running containers, the centre's website, the phone system, monitoring and an automation script. This document is the full demo, about 25 minutes, with what to say and what to show in each part. The 5-minute version is [alexy-despres-abr.md](alexy-despres-abr.md).
 
 ## What I built
 
-| Task | What it is | Where it lives | State |
-| ---- | ---------- | -------------- | ----- |
-| T1.3 Terraform | The nine Linux servers and the firewall VM, described as code and created on Proxmox | [`terraform/`](../../terraform) | Done |
-| T1.5 k3s | A Kubernetes cluster on `k3s01` that runs the website | [`ansible/roles/k3s`](../../ansible/roles/k3s), [guide](../guides/deploying-services-on-k3s.md) | Done |
-| T3.2 LAMP web server | The centre's website (Apache, PHP, MariaDB) on k3s, published at `www.divertissementestrie.ca`; the same site on `web01` as the development server | [`k8s/web/`](../../k8s/web), [`ansible/roles/lamp`](../../ansible/roles/lamp) | Done |
-| T3.1 VoIP | FreePBX on `voip01`: four extensions, a ring group, French voicemail, a real IP phone and softphones on the PCs through the VPN | [`ansible/roles/freepbx`](../../ansible/roles/freepbx), [guide](../guides/freepbx.md) | Done |
-| T3.3 Netdata | The nine Linux servers send their metrics to `mon01`, which keeps the history, raises the alerts and serves the dashboard | [`ansible/roles/netdata`](../../ansible/roles/netdata), [guide](../guides/netdata.md) | Done |
-| T5.2 Automation script | `sauvegarde-site`: a nightly backup of the website, checked by loading it into a scratch database | [`ansible/roles/sauvegarde_site`](../../ansible/roles/sauvegarde_site) | Done |
+| Task                   | What it is                                                                                                                                         | Where it lives                                                                                  | State |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----- |
+| T1.3 Terraform         | The nine Linux servers and the firewall VM, described as code and created on Proxmox                                                               | [`terraform/`](../../terraform)                                                                 | Done  |
+| T1.5 k3s               | A Kubernetes cluster on `k3s01` that runs the website                                                                                              | [`ansible/roles/k3s`](../../ansible/roles/k3s), [guide](../guides/deploying-services-on-k3s.md) | Done  |
+| T3.2 LAMP web server   | The centre's website (Apache, PHP, MariaDB) on k3s, published at `www.divertissementestrie.ca`; the same site on `web01` as the development server | [`k8s/web/`](../../k8s/web), [`ansible/roles/lamp`](../../ansible/roles/lamp)                   | Done  |
+| T3.1 VoIP              | FreePBX on `voip01`: four extensions, a ring group, French voicemail, a real IP phone and softphones on the PCs through the VPN                    | [`ansible/roles/freepbx`](../../ansible/roles/freepbx), [guide](../guides/freepbx.md)           | Done  |
+| T3.3 Netdata           | The nine Linux servers send their metrics to `mon01`, which keeps the history, raises the alerts and serves the dashboard                          | [`ansible/roles/netdata`](../../ansible/roles/netdata), [guide](../guides/netdata.md)           | Done  |
+| T5.2 Automation script | `sauvegarde-site`: a nightly backup of the website, checked by loading it into a scratch database                                                  | [`ansible/roles/sauvegarde_site`](../../ansible/roles/sauvegarde_site)                          | Done  |
 
 Two smaller pieces support the rest:
 

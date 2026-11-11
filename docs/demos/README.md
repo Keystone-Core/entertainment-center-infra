@@ -1,6 +1,6 @@
 # Demos
 
-One file per team member: a full demo of their part of the project, with the explanations to give and the commands to run. Each file follows the same outline:
+One file per team member: a full demo of their part of the project, with the explanations to give and the commands to run. A file ending in `-abr` is the abridged version of the same demo, about 5 minutes. Each full demo follows the same outline:
 
 1. **What I built**: the tasks of the planning workbook and where each result lives.
 2. **Before the demo**: tunnels, accounts and data to prepare.
@@ -10,7 +10,7 @@ One file per team member: a full demo of their part of the project, with the exp
 
 | Member | Demo | Tasks |
 | ------ | ---- | ----- |
-| Alexy Després | [alexy-despres.md](alexy-despres.md) | Terraform (T1.3), k3s (T1.5), FreePBX telephony (T3.1), LAMP web server and website (T3.2), Netdata (T3.3), website backup script (T5.2) |
+| Alexy Després | [Full (25 min)](alexy-despres.md), [short (5 min)](alexy-despres-abr.md) | Terraform (T1.3), k3s (T1.5), FreePBX telephony (T3.1), LAMP web server and website (T3.2), Netdata (T3.3), website backup script (T5.2) |
 | Loucas Viens | *to come* | |
 | Nicolas-André Anillo | *to come* | |
 | Joshua Leclerc | *to come* | |
