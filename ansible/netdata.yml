@@ -1,0 +1,12 @@
+---
+# Lancer a part : ansible-playbook netdata.yml
+# Le parent (mon01) d'abord, pour qu'il soit pret a recevoir les enfants.
+- name: Supervision (Netdata), parent
+  hosts: mon01
+  roles:
+    - netdata
+
+- name: Supervision (Netdata), enfants
+  hosts: linux:!mon01
+  roles:
+    - netdata

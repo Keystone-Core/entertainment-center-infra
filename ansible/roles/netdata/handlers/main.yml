@@ -1,0 +1,5 @@
+---
+- name: Redemarrer Netdata
+  ansible.builtin.service:
+    name: netdata
+    state: restarted

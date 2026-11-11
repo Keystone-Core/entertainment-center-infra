@@ -1,0 +1,33 @@
+# Gere par Ansible (role netdata) - ne pas modifier a la main
+{% if inventory_hostname == netdata_parent %}
+# Parent : recoit les mesures de toutes les machines Linux, les garde sur
+# disque, declenche les alertes et sert le tableau de bord.
+[db]
+    mode = dbengine
+
+[web]
+    bind to = *:{{ netdata_port }}
+    allow connections from = localhost {{ (netdata_reseaux_tableau + netdata_enfants) | join(' ') }}
+    allow dashboard from = localhost {{ netdata_reseaux_tableau | join(' ') }}
+    allow streaming from = {{ netdata_enfants | join(' ') }}
+
+[health]
+    enabled = yes
+
+[ml]
+    enabled = yes
+{% else %}
+# Enfant : mesure la machine et envoie tout a {{ netdata_parent }}. Le parent
+# garde l'historique, declenche les alertes et sert le tableau de bord.
+[db]
+    mode = ram
+
+[web]
+    bind to = localhost:{{ netdata_port }}
+
+[health]
+    enabled = no
+
+[ml]
+    enabled = no
+{% endif %}

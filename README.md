@@ -136,16 +136,16 @@ The project is in the **implementation phase**, which runs from week 6 to week 1
 
 The critical path is infrastructure, then security, then services, then the media stack/Homarr/AMP, then testing: 10 weeks with no slack.
 
-### Status (November 9, 2026)
+### Status (November 11, 2026)
 
 | Work package          | State                                                                                       |
 | --------------------- | ------------------------------------------------------------------------------------------- |
 | Base infrastructure   | Done: Proxmox, VLANs, Terraform, Ansible and k3s                                            |
 | Security              | Firewall, rules and Caddy in service. The Xray VPN isn't deployed yet                       |
-| Linux services        | FreePBX in service, and the centre's website on k3s. Netdata not installed yet              |
+| Linux services        | FreePBX, the centre's website on k3s, the development server on web01 and Netdata in service |
 | Windows services      | Active Directory, DNS, DHCP, hMailServer, Veeam and Defender in service; osTicket runs on Debian |
 | MQTT and ESP32        | Broker in service without TLS. No module connected yet                                      |
-| Automation scripts    | Veeam monitoring (T5.3) in service. The other three aren't in the repository yet            |
+| Automation scripts    | Veeam monitoring (T5.3) and the website backup (T5.2) in service. The other two aren't in the repository yet |
 | Media, Homarr and AMP | Homarr in service. Jellyfin, the \*arr suite and AMP not installed yet                      |
 | Testing               | To come, weeks 14 and 15                                                                    |
 

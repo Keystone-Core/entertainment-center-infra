@@ -1,0 +1,21 @@
+---
+# Supervision des ressources (T3.3). Chaque machine Linux mesure ses
+# ressources et les envoie a mon01 (le parent), qui garde l'historique,
+# declenche les alertes et sert le tableau de bord.
+netdata_parent: mon01
+netdata_parent_ip: 10.10.20.22
+netdata_port: 19999
+
+# Cle commune des machines qui envoient leurs mesures, generee sur le poste
+# de controle (jamais dans le depot).
+netdata_secrets: /root/.cde-secrets/netdata
+
+# Qui voit le tableau de bord de mon01 : le VLAN de gestion, le VLAN interne
+# (postes du personnel) et proxy01, pour une publication par Caddy.
+netdata_reseaux_tableau:
+  - 10.10.10.*
+  - 10.10.20.*
+  - 10.10.80.10
+
+# Machines qui envoient a mon01 : toutes les machines Linux, sauf lui.
+netdata_enfants: "{{ groups['linux'] | difference([netdata_parent]) | sort | map('extract', hostvars, 'ansible_host') | list }}"
