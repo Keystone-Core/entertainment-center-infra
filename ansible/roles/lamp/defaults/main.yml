@@ -6,8 +6,8 @@ lamp_source: "{{ playbook_dir }}/../k8s/web"   # code et schema du site
 lamp_racine: /var/www/html                      # chemins attendus par le code
 lamp_base: site
 lamp_utilisateur_base: site
-lamp_url: https://dev.divertissementestrie.ca
-lamp_proxy: 10.10.80.10                         # proxy01, qui publie le site
+lamp_url: http://10.10.20.21                     # joint depuis le VLAN 20, sans Caddy
+lamp_proxy: 10.10.80.10                         # proxy01, s'il publie un jour le site
 lamp_fuseau: America/Toronto
 
 # Mots de passe generes sur le poste de controle, jamais dans le depot.
