@@ -1,0 +1,5 @@
+---
+# Sauvegarde du site web sur k3s01 (T5.2), sur le poste de controle.
+sauvegarde_site_dossier: /root/sauvegardes/site
+sauvegarde_site_jours: 14                 # duree de conservation
+sauvegarde_site_heure: "*-*-* 03:15:00 America/Toronto"   # OnCalendar de systemd

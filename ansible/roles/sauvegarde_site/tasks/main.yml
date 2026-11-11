@@ -1,0 +1,29 @@
+---
+- name: Script de sauvegarde du site
+  ansible.builtin.copy:
+    src: sauvegarde-site
+    dest: /usr/local/sbin/sauvegarde-site
+    mode: "0750"
+
+- name: Dossier des sauvegardes
+  ansible.builtin.file:
+    path: "{{ sauvegarde_site_dossier }}"
+    state: directory
+    mode: "0700"
+
+- name: Service et minuterie systemd
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: /etc/systemd/system/{{ item }}
+    mode: "0644"
+  loop:
+    - sauvegarde-site.service
+    - sauvegarde-site.timer
+
+# Persistent : une nuit manquee (poste eteint) est rattrapee au demarrage.
+- name: Minuterie activee
+  ansible.builtin.systemd_service:
+    name: sauvegarde-site.timer
+    enabled: true
+    state: started
+    daemon_reload: true

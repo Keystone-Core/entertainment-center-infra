@@ -1,0 +1,12 @@
+# Gere par Ansible (role sauvegarde_site) - ne pas modifier a la main
+[Unit]
+Description=Sauvegarde du site web sur k3s01 (base de donnees et affiches)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=KUBECONFIG=/root/.kube/config
+Environment=BACKUP_DIR={{ sauvegarde_site_dossier }}
+Environment=BACKUP_DAYS={{ sauvegarde_site_jours }}
+ExecStart=/usr/local/sbin/sauvegarde-site

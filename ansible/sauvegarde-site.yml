@@ -1,0 +1,9 @@
+---
+# Lancer a part, sur ctrl-iac : ansible-playbook sauvegarde-site.yml
+# Le poste de controle se configure lui-meme : il a kubectl et l'acces a k3s.
+- name: Sauvegarde du site web (T5.2)
+  hosts: localhost
+  connection: local
+  become: false
+  roles:
+    - sauvegarde_site
