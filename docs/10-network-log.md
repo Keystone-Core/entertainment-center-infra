@@ -19,6 +19,7 @@ The following table records each version of the log.
 | 1.8     | November 9, 2026   | Loucas Viens | Log compared with every VM and with fw01: mail01, tick01, veeam-worker, MQTT without TLS, VPN not deployed, Veeam and MQTT test rules on fw01, workstations joined to the domain |
 | 1.9     | November 9, 2026   | Loucas Viens | pfSense, FreePBX, Veeam, osTicket, Homarr, the website and phpMyAdmin published by Caddy for VLANs 10 and 20; alias SERVICES_HTTPS and its DMZ rule; internal DNS records |
 | 1.10    | November 11, 2026  | Alexy Després | pve's port nic0 added to vmbr1 for the reception's IP phone (TEL-02, Cisco SPA303, 10.10.20.122); fw01 forwards SIP and RTP from the Xray VPN exit (10.85.2.124) to voip01 for the PCs' softphones, which wait for the Xray server to relay UDP |
+| 1.11    | November 11, 2026  | Alexy Després | The Xray VPN comes out through an Xray bridge on pve itself (10.85.2.127), not 10.85.2.124, and it relays UDP: fw01's VoIP forwarding and voip01's firewall now accept 10.85.2.127 |
 
 ## 10.1 Addressing Plan, Equipment and Assigned Users
 
@@ -59,7 +60,7 @@ Within VLAN 20, the addresses are divided by type of device: .10 to .99 for the 
 
   The scopes of VLANs 30, 50 and 70 and the VLAN 20 range are J. Leclerc's to align with this plan. mail01 currently gets 10.10.20.201 by reservation instead of 10.10.20.11.
 - **Time:** dc01 syncs its clock with the cégep NTP server (192.219.64.110) through the LAN rule "Heure"; the Linux hosts use fw01.
-- **VPN:** fw01 forwards WAN TCP 443 to 10.10.20.200, but nothing answers at that address: as of November 9, 2026, no inspected VM runs Xray and the forwarding rule shows no traffic. Remote access as described in this log isn't in service yet.
+- **VPN:** remote access currently goes through an Xray bridge running on pve itself (`/usr/local/bin/xray run -config /etc/xray-bridge/config.json`), connected to an Xray server outside the centre (184.163.50.238). VPN traffic comes out from pve's address, 10.85.2.127, on the cégep network: it reaches the cégep network and fw01's WAN, not the VLANs directly. fw01 also forwards WAN TCP 443 to 10.10.20.200, but nothing answers at that address: as of November 9, 2026, no inspected VM runs Xray and the forwarding rule shows no traffic. Remote access as described in this log isn't in service yet.
 - **MQTT:** mqtt01 listens on 1883/TCP, without TLS, with accounts and access rules. TLS on 8883 is still to be done; until then, rule 3 has no effect ([guide](guides/mosquitto.md)).
 - **Services not installed yet:** LAMP on web01 (the centre's website runs on k3s01 for now, in `k8s/web`), Netdata on mon01, the media stack on media01 and AMP on game01. These VMs only have the base Ansible role.
 - **VMs outside Terraform:** dc01, mail01, tick01, bkp01, veeam-worker and ctrl-iac were created by hand ([Proxmox host guide](guides/proxmox-host.md)).
@@ -125,8 +126,8 @@ The following table lists the listening ports of each service and the networks a
 | mail01      | Email exchange with the Internet                         | 25/TCP                                                             | Internet (if an MX record is published)  |
 | tick01      | osTicket (HTTP)                                          | 80/TCP                                                             | proxy01                                  |
 | bkp01       | Veeam Backup & Replication (console 9392 is local only)  | 443, 6162/TCP                                                      | VLANs 10 and 20; proxy01; pve01          |
-| voip01      | SIP signalling                                           | 5060/UDP and TCP                                                   | VLAN 20 (IP phones); Xray VPN exit (10.85.2.124) through fw01 |
-| voip01      | Audio streams (RTP)                                      | 10000 to 20000/UDP                                                 | VLAN 20 (IP phones); Xray VPN exit (10.85.2.124) through fw01 |
+| voip01      | SIP signalling                                           | 5060/UDP and TCP                                                   | VLAN 20 (IP phones); Xray VPN exit (pve, 10.85.2.127) through fw01 |
+| voip01      | Audio streams (RTP)                                      | 10000 to 20000/UDP                                                 | VLAN 20 (IP phones); Xray VPN exit (pve, 10.85.2.127) through fw01 |
 | voip01      | FreePBX web interface (HTTPS)                            | 443/TCP                                                            | VLAN 10; proxy01                         |
 | web01       | Apache (HTTP)                                            | 80/TCP                                                             | proxy01                                  |
 | web01       | MariaDB                                                  | 3306/TCP                                                           | web01 only (local interface)             |
@@ -164,7 +165,7 @@ The firewall applies a default-deny policy: any flow that is not allowed below i
 | 15  | VLAN 60 (connected devices)   | Internet and other VLANs                     | All                                                                    | Block                   |
 | 16  | Any                           | Any                                          | All                                                                    | Block and log           |
 
-Remote access for the administrators and technical support is planned through the Xray VPN server (10.10.20.200), published on TCP 443 of the WAN interface; the server isn't deployed yet (section 10.1). It replaces Tailscale, planned until version 1.1. Interconnecting the telephony with an external provider is outside the scope of the project: the telephony (FreePBX) remains internal to the centre. The staff's PCs reach it from the Xray VPN, whose exit (10.85.2.124) is on the cégep network: fw01 forwards SIP and RTP from that address only to voip01. As of November 11, 2026, that Xray server doesn't relay UDP, so the softphones can't connect yet. Two flows coming from the Internet reach VLAN 20: the VPN on TCP 443 and, if an MX record is published, email on TCP 25 to mail01 (rule 12). These exceptions to the demilitarized-zone separation are each limited to a single port.
+Remote access for the administrators and technical support is planned through the Xray VPN server (10.10.20.200), published on TCP 443 of the WAN interface; the server isn't deployed yet (section 10.1). It replaces Tailscale, planned until version 1.1. Interconnecting the telephony with an external provider is outside the scope of the project: the telephony (FreePBX) remains internal to the centre. The staff's PCs reach it from the Xray VPN, which comes out on the cégep network through an Xray bridge on pve (10.85.2.127): fw01 forwards SIP and RTP from that address only to voip01. Two flows coming from the Internet reach VLAN 20: the VPN on TCP 443 and, if an MX record is published, email on TCP 25 to mail01 (rule 12). These exceptions to the demilitarized-zone separation are each limited to a single port.
 
 ## 10.3 Configuration as Built on fw01
 
@@ -194,8 +195,8 @@ The rules use the following aliases:
 | Action           | Source | Destination              | Service | Description                    |
 | ---------------- | ------ | ------------------------ | ------- | ------------------------------ |
 | Port forwarding  | Any    | WAN address → 10.10.20.200 | 443/TCP | Xray VPN (not deployed yet)   |
-| Port forwarding  | 10.85.2.124 | WAN address → 10.10.20.20 | 5060/UDP | FreePBX SIP, softphones of the PCs through the Xray VPN |
-| Port forwarding  | 10.85.2.124 | WAN address → 10.10.20.20 | 10000 to 20000/UDP | FreePBX audio (RTP), same softphones |
+| Port forwarding  | 10.85.2.127 | WAN address → 10.10.20.20 | 5060/UDP | FreePBX SIP, softphones of the PCs through the Xray VPN |
+| Port forwarding  | 10.85.2.127 | WAN address → 10.10.20.20 | 10000 to 20000/UDP | FreePBX audio (RTP), same softphones |
 
 **LAN — VLAN 20 (internal)**
 

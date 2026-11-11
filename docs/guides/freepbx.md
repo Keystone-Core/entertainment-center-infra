@@ -74,7 +74,7 @@ The phone was set up without touching its keypad: it downloads a settings file w
 
 ### Softphones on the PCs
 
-The PCs reach the phone system from anywhere through the Xray VPN. **As of November 11, 2026, the Xray server (exit `10.85.2.124`) doesn't relay UDP**: SIP and audio never reach fw01, so the softphones can't connect yet. fw01 and `voip01` are ready; once the server relays UDP, nothing else needs to change.
+The PCs reach the phone system from anywhere through the Xray VPN, which relays UDP (SIP and audio) since November 11, 2026.
 
 Each PC needs:
 
@@ -82,7 +82,7 @@ Each PC needs:
 2. Install a softphone: [MicroSIP](https://www.microsip.org/) on Windows, Linphone on Linux (`pkgs.linphone` on NixOS; choose "SIP account", not a linphone.org account).
 3. Enter the server `10.85.2.16`, the extension and its password, transport UDP.
 
-The VPN comes out at `10.85.2.124`, on the cégep network. fw01 forwards UDP 5060 and 10000 to 20000 from that address only to `voip01`, and `voip01`'s firewall accepts it. Asterisk gives its WAN address (`10.85.2.16`) to devices outside `10.10.0.0/16`, and `10.10.20.20` to the others (`freepbx_adresse_externe` and `freepbx_reseaux_locaux` in the role). The audio always goes through Asterisk (`direct_media=no`): a direct stream between the desk phone and a PC behind fw01 wouldn't arrive.
+The VPN comes out at `10.85.2.127`: an Xray bridge runs on pve itself, on the cégep network. fw01 forwards UDP 5060 and 10000 to 20000 from that address only to `voip01`, and `voip01`'s firewall accepts it. Asterisk gives its WAN address (`10.85.2.16`) to devices outside `10.10.0.0/16`, and `10.10.20.20` to the others (`freepbx_adresse_externe` and `freepbx_reseaux_locaux` in the role). The audio always goes through Asterisk (`direct_media=no`): a direct stream between the desk phone and a PC behind fw01 wouldn't arrive.
 
 fw01's WAN address comes from the cégep's DHCP. If it changes, update `freepbx_adresse_externe`, run the playbook again and change the server in the softphones.
 
@@ -92,7 +92,7 @@ To check which devices are connected, run on `voip01`:
 sudo asterisk -rx "pjsip show contacts"
 ```
 
-The PCs all appear from `10.85.2.124`, on different ports.
+The PCs all appear from `10.85.2.127`, on different ports.
 
 ## Running the playbook
 
@@ -121,7 +121,7 @@ The first run takes 20 to 40 minutes, almost all of it the FreePBX installer. Af
 | VLAN 10                               | SSH (22), web (80, 443)   |
 | `proxy01`                             | Web (80, 443), for a future Caddy site |
 | VLAN 20                               | SIP (5060), RTP (10000 to 20000) |
-| Xray VPN exit (`10.85.2.124`), forwarded by fw01 | SIP (5060), RTP (10000 to 20000) |
+| Xray VPN exit (pve, `10.85.2.127`), forwarded by fw01 | SIP (5060), RTP (10000 to 20000) |
 | Anything else                         | Dropped                   |
 
 fail2ban, installed by FreePBX, also blocks addresses that fail to log in too often.
@@ -143,7 +143,7 @@ Then open `https://localhost:8444/admin` and accept the self-signed certificate.
 | A phone doesn't register                             | Wrong password, or the phone isn't in VLAN 20. Watch `/var/log/asterisk/full` on `voip01`. |
 | Calls connect but there's no sound                   | The RTP ports (10000 to 20000/UDP) are blocked between the phone and `voip01`.          |
 | A change made in the web interface has no effect     | Click **Apply Config**, or run `sudo fwconsole reload`.                                 |
-| A PC doesn't register                                | The Xray client isn't in TUN mode, or fw01's forwarding is missing. `pjsip show contacts` lists nothing from `10.85.2.124`. |
+| A PC doesn't register                                | The Xray client isn't in TUN mode, or fw01's forwarding is missing. `pjsip show contacts` lists nothing from `10.85.2.127`. |
 | A PC registers but there's no sound                  | fw01 doesn't forward UDP 10000 to 20000, or fw01's WAN address changed (see above).     |
 | Asterisk is stopped after `fwconsole restart`        | That command checks before Asterisk has finished stopping, and fails. Run `sudo fwconsole start`. To restart, use `sudo fwconsole stop --immediate && sudo fwconsole start`. |
 | `voip01` doesn't answer at all after a rebuild       | fw01 still has the old VM's MAC address: it expires after about 20 minutes, or as soon as `voip01` sends traffic. |
