@@ -1,0 +1,103 @@
+#!/bin/bash
+# Backup of the centre's website on k3s01 (task T5.2), run every night on
+# ctrl-iac by the systemd timer sauvegarde-site.timer:
+#
+#   sauvegarde-site                  back up the database and the posters now
+#   sauvegarde-site list             list the backups
+#   sauvegarde-site restore <name>   put a backup back in place (asks first)
+#
+# Each backup is a folder in $BACKUP_DIR named after its date. It holds the
+# MariaDB dump (site.sql.gz), the posters (affiches.tar.gz) and their SHA-256
+# sums. A backup is kept only if the dump loads into a scratch database
+# (site_verif) with every table. Backups older than $BACKUP_DAYS days are
+# deleted. Messages also go to the journal: journalctl -t sauvegarde-site.
+set -euo pipefail
+
+BACKUP_DIR=${BACKUP_DIR:-/root/sauvegardes/site}
+BACKUP_DAYS=${BACKUP_DAYS:-14}
+TABLES=8                                   # tables in k8s/web/schema.sql
+UPLOADS=/var/www/html/storage/uploads
+
+# Messages go to stderr (and the journal): stdout is kept for results.
+log() {
+    echo "$(date '+%F %T') $*" >&2
+    logger -t sauvegarde-site -- "$*" 2>/dev/null || true
+}
+
+die() {
+    log "ERROR: $*"
+    exit 1
+}
+
+# sql <database> <statement>: runs SQL as root in the mariadb pod. The
+# password stays in the pod (MYSQL_PWD), never on a command line.
+sql() {
+    kubectl -n web exec -i deploy/mariadb -- \
+        sh -c 'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" exec mariadb -uroot -N "$@"' sh "$@"
+}
+
+# check_dump <file>: loads the dump into site_verif, counts its tables and
+# accounts, then drops the scratch database. Prints the number of accounts.
+check_dump() {
+    sql -e 'DROP DATABASE IF EXISTS site_verif; CREATE DATABASE site_verif' </dev/null
+    zcat "$1" | sql site_verif
+    tables=$(sql -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'site_verif'" </dev/null)
+    accounts=$(sql -e 'SELECT COUNT(*) FROM site_verif.users' </dev/null)
+    sql -e 'DROP DATABASE site_verif' </dev/null
+    [ "$tables" -eq "$TABLES" ] || die "the dump loads $tables tables instead of $TABLES"
+    echo "$accounts"
+}
+
+backup() {
+    name=$(date +%Y-%m-%d_%H%M)
+    work="$BACKUP_DIR/.$name.partial"
+    mkdir -p "$work"
+    chmod 700 "$BACKUP_DIR"
+
+    # --single-transaction: a consistent dump without locking the site.
+    kubectl -n web exec deploy/mariadb -- \
+        sh -c 'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" exec mariadb-dump -uroot --single-transaction --routines --triggers site' \
+        | gzip > "$work/site.sql.gz"
+    # The files inside the folder, not the folder: it's the volume's root,
+    # owned by root, and tar couldn't restore its permissions.
+    kubectl -n web exec deploy/php -- \
+        sh -c 'cd "$1" && find . -mindepth 1 -print0 | tar --null -T - -czf -' sh "$UPLOADS" > "$work/affiches.tar.gz"
+
+    gzip -t "$work/site.sql.gz" || die "the dump archive is damaged"
+    zcat "$work/site.sql.gz" | tail -n 1 | grep -q '^-- Dump completed' || die "the dump stopped before the end"
+    posters=$(tar -tzf "$work/affiches.tar.gz" | grep -c -v '/$' || true)
+    accounts=$(check_dump "$work/site.sql.gz")
+    (cd "$work" && sha256sum site.sql.gz affiches.tar.gz > SHA256SUMS)
+    mv "$work" "$BACKUP_DIR/$name"
+
+    find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -name '20*' -mtime +"$BACKUP_DAYS" -exec rm -rf {} +
+    find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -name '.*.partial' -mmin +60 -exec rm -rf {} +
+    log "backup $name OK: $accounts accounts, $posters posters, $(du -sh "$BACKUP_DIR/$name" | cut -f1), checked in a scratch database"
+}
+
+list() {
+    for dir in "$BACKUP_DIR"/20*/; do
+        [ -d "$dir" ] || { echo "No backup in $BACKUP_DIR."; return; }
+        echo "$(basename "$dir")  $(du -sh "$dir" | cut -f1)"
+    done
+}
+
+restore() {
+    dir="$BACKUP_DIR/${1:?Usage: sauvegarde-site restore <name> (see sauvegarde-site list)}"
+    [ -f "$dir/site.sql.gz" ] || die "no backup named $1 in $BACKUP_DIR"
+    (cd "$dir" && sha256sum --quiet -c SHA256SUMS) || die "the files of $1 don't match their SHA-256 sums"
+    read -r -p "Replace the website's database and posters with the backup $1? Type OUI to continue: " answer
+    [ "$answer" = OUI ] || die "restore of $1 cancelled"
+
+    zcat "$dir/site.sql.gz" | sql site
+    kubectl -n web exec -i deploy/php -- \
+        sh -c 'find "$1" -mindepth 1 -delete && tar -C "$1" -xzf -' sh "$UPLOADS" < "$dir/affiches.tar.gz"
+    log "restore of $1 done: database and posters replaced"
+}
+
+case ${1:-backup} in
+    backup) backup ;;
+    list) list ;;
+    restore) restore "${2:-}" ;;
+    *) echo "Usage: sauvegarde-site [backup | list | restore <name>]" >&2; exit 2 ;;
+esac

@@ -1,0 +1,152 @@
+---
+- name: Paquets Apache, PHP et MariaDB
+  ansible.builtin.apt:
+    name: "{{ lamp_paquets }}"
+    state: present
+
+- name: Reglages PHP (fuseau, taille des envois)
+  ansible.builtin.template:
+    src: php.ini.j2
+    dest: /etc/php/8.4/{{ item }}/conf.d/99-cde.ini
+    mode: "0644"
+  loop:
+    - apache2
+    - cli
+  notify: Redemarrer Apache
+
+# ---------------------------------------------------------------------
+# Base de donnees : root se connecte par le socket, sans mot de passe.
+
+- name: Dossier des mots de passe sur le poste de controle
+  ansible.builtin.file:
+    path: "{{ lamp_secrets }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+
+- name: Mot de passe de la base du site
+  ansible.builtin.set_fact:
+    lamp_mdp_base: "{{ lookup('ansible.builtin.password', lamp_secrets ~ '/base-site length=24 chars=ascii_letters,digits') }}"
+  no_log: true
+
+- name: MariaDB demarre
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: true
+
+- name: Base du site
+  community.mysql.mysql_db:
+    name: "{{ lamp_base }}"
+    encoding: utf8mb4
+    collation: utf8mb4_unicode_ci
+    login_unix_socket: /run/mysqld/mysqld.sock
+  register: lamp_base_creee
+
+- name: Utilisateur de la base
+  community.mysql.mysql_user:
+    name: "{{ lamp_utilisateur_base }}"
+    host: localhost
+    password: "{{ lamp_mdp_base }}"
+    priv: "{{ lamp_base }}.*:ALL"
+    login_unix_socket: /run/mysqld/mysqld.sock
+  no_log: true
+
+# Le schema ne s'importe qu'a la creation de la base, comme sur k3s01.
+- name: Schema et contenu de depart
+  when: lamp_base_creee.changed
+  block:
+    - name: Copier le schema
+      ansible.builtin.copy:
+        src: "{{ lamp_source }}/schema.sql"
+        dest: /root/schema-site.sql
+        mode: "0600"
+
+    - name: Importer le schema
+      community.mysql.mysql_db:
+        name: "{{ lamp_base }}"
+        state: import
+        target: /root/schema-site.sql
+        login_unix_socket: /run/mysqld/mysqld.sock
+
+# ---------------------------------------------------------------------
+# Code du site, aux memes chemins que dans le conteneur de k3s01.
+
+- name: Page par defaut de Debian retiree
+  ansible.builtin.file:
+    path: "{{ lamp_racine }}/index.html"
+    state: absent
+
+- name: Code du site (public et app)
+  ansible.builtin.copy:
+    src: "{{ lamp_source }}/site/{{ item }}/"
+    dest: "{{ lamp_racine }}/{{ item }}/"
+    owner: root
+    group: root
+    mode: u=rwX,go=rX
+  loop:
+    - public
+    - app
+
+- name: Dossiers des affiches et des sessions
+  ansible.builtin.file:
+    path: "{{ lamp_racine }}/storage/{{ item }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0750"
+  loop:
+    - uploads
+    - sessions
+
+# Les memes reglages pour les commandes (cli.php, smoke-test.sh) :
+#   sudo cde-env php /var/www/html/app/cli.php staff <courriel>
+- name: Reglages du site pour les commandes
+  ansible.builtin.template:
+    src: site.env.j2
+    dest: /etc/cde-site.env
+    mode: "0600"
+
+- name: Commande cde-env
+  ansible.builtin.copy:
+    dest: /usr/local/sbin/cde-env
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      # Lance une commande avec les reglages du site (role lamp).
+      set -a
+      . /etc/cde-site.env
+      set +a
+      exec "$@"
+
+# ---------------------------------------------------------------------
+# Apache
+
+- name: Modules Apache (reecriture, adresse du visiteur derriere proxy01)
+  community.general.apache2_module:
+    name: "{{ item }}"
+  loop:
+    - rewrite
+    - remoteip
+  notify: Redemarrer Apache
+
+# Le fichier contient le mot de passe de la base : lisible par root seulement.
+- name: Site Apache
+  ansible.builtin.template:
+    src: cde.conf.j2
+    dest: /etc/apache2/sites-available/cde.conf
+    mode: "0600"
+  notify: Redemarrer Apache
+
+- name: Site active, site par defaut desactive
+  ansible.builtin.command: "{{ item.commande }}"
+  args:
+    creates: "{{ item.creates | default(omit) }}"
+    removes: "{{ item.removes | default(omit) }}"
+  loop:
+    - commande: a2ensite cde
+      creates: /etc/apache2/sites-enabled/cde.conf
+    - commande: a2dissite 000-default
+      removes: /etc/apache2/sites-enabled/000-default.conf
+  notify: Redemarrer Apache

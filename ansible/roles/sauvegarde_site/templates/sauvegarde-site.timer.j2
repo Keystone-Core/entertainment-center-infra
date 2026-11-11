@@ -1,0 +1,11 @@
+# Gere par Ansible (role sauvegarde_site) - ne pas modifier a la main
+[Unit]
+Description=Sauvegarde nocturne du site web
+
+[Timer]
+OnCalendar={{ sauvegarde_site_heure }}
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

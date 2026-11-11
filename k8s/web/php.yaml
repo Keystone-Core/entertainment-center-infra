@@ -1,10 +1,15 @@
 # Apache + PHP-FPM serving the website of the Centre de divertissement de
-# l'Estrie, published by Traefik as web.cde.lan.
+# l'Estrie, published by Traefik as www.divertissementestrie.ca and web.cde.lan.
 #
 # Layout in the container:
-#   /var/www/html/public           web root (ConfigMap web-public)
-#   /var/www/html/app              PHP code, outside the web root (ConfigMap web-app)
-#   /var/www/html/storage/uploads  uploaded files, outside the web root (PVC uploads)
+#   /var/www/html/public            web root (ConfigMap web-public)
+#   /var/www/html/app               PHP code, outside the web root (ConfigMap web-app)
+#   /var/www/html/storage/uploads   uploaded files, outside the web root (PVC uploads)
+#   /var/www/html/storage/sessions  PHP sessions, so a restart logs no one out (PVC sessions)
+#
+# Email for forgotten passwords comes from the optional Secret web-smtp (keys
+# host, port, user, password, from: see README.md). Without it, the site
+# still works and the staff give the links from /gestion/comptes.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -16,6 +21,17 @@ spec:
     requests:
       storage: 2Gi
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sessions
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 128Mi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,7 +39,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate                  # the uploads volume is ReadWriteOnce
+    type: Recreate                  # the volumes are ReadWriteOnce
   selector:
     matchLabels:
       app: php
@@ -76,6 +92,38 @@ spec:
               value: "true"
             - name: SHOW_WELCOME_MESSAGE
               value: "false"
+            - name: SITE_URL
+              value: https://www.divertissementestrie.ca
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: web-smtp
+                  key: host
+                  optional: true
+            - name: SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: web-smtp
+                  key: port
+                  optional: true
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: web-smtp
+                  key: user
+                  optional: true
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: web-smtp
+                  key: password
+                  optional: true
+            - name: SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: web-smtp
+                  key: from
+                  optional: true
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -106,6 +154,8 @@ spec:
               readOnly: true
             - name: uploads
               mountPath: /var/www/html/storage/uploads
+            - name: sessions
+              mountPath: /var/www/html/storage/sessions
       volumes:
         - name: public
           configMap:
@@ -116,6 +166,9 @@ spec:
         - name: uploads
           persistentVolumeClaim:
             claimName: uploads
+        - name: sessions
+          persistentVolumeClaim:
+            claimName: sessions
 ---
 apiVersion: v1
 kind: Service

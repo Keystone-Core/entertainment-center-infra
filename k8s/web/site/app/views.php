@@ -96,6 +96,7 @@ function admin_nav(string $current): string
         '/gestion/seances' => 'Séances',
         '/gestion/films' => 'Films',
         '/gestion/annonces' => 'Annonces',
+        '/gestion/comptes' => 'Comptes',
         '/gestion/jeux' => 'Serveurs de jeux',
     ];
     $html = '<nav class="admin-nav" aria-label="Gestion">';

@@ -1,0 +1,23 @@
+---
+# Serveur web de developpement (LAMP, Fp5) : le meme site que www, sur
+# Apache, PHP et MariaDB installes sur web01, avec sa propre base. On y
+# essaie les changements avant de les deployer sur k3s01.
+lamp_source: "{{ playbook_dir }}/../k8s/web"   # code et schema du site
+lamp_racine: /var/www/html                      # chemins attendus par le code
+lamp_base: site
+lamp_utilisateur_base: site
+lamp_url: https://dev.divertissementestrie.ca
+lamp_proxy: 10.10.80.10                         # proxy01, qui publie le site
+lamp_fuseau: America/Toronto
+
+# Mots de passe generes sur le poste de controle, jamais dans le depot.
+lamp_secrets: /root/.cde-secrets/web01
+
+lamp_paquets:
+  - apache2
+  - libapache2-mod-php8.4
+  - php8.4-cli
+  - php8.4-mysql
+  - php8.4-mbstring
+  - mariadb-server
+  - python3-pymysql                             # modules community.mysql

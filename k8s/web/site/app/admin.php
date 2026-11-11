@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // Staff pages (/gestion): today's screenings, screenings, films with
-// their posters, announcements and game servers. Every handler starts
+// their posters, announcements, accounts and game servers. Every handler starts
 // with require_staff().
 
 function admin_page(string $title, string $current, string $content): void
@@ -594,6 +594,134 @@ function page_admin_news_delete(string $id): void
     query('DELETE FROM announcements WHERE id = ?', [(int) $id]);
     flash('Annonce retirée.');
     redirect('/gestion/annonces');
+}
+
+// ---------------------------------------------------------------------
+// Accounts: search, password links, staff access, deletion. A staff member
+// can't change or delete their own account, so the centre can't lose its
+// last staff access by mistake.
+
+function page_admin_accounts(): void
+{
+    $me = require_staff();
+    $search = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
+    $params = [sql_time(now())];
+    $where = '';
+    if ($search !== '') {
+        $like = '%' . addcslashes($search, '%_\\') . '%';
+        $where = 'WHERE u.name LIKE ? OR u.email LIKE ?';
+        array_push($params, $like, $like);
+    }
+    $accounts = query(
+        "SELECT u.id, u.name, u.email, u.role, u.created_at,
+                (SELECT COUNT(*) FROM reservations b JOIN screenings s ON s.id = b.screening_id
+                 WHERE b.user_id = u.id AND s.starts_at >= ?) AS upcoming
+         FROM users u $where
+         ORDER BY u.role DESC, u.created_at DESC
+         LIMIT 100",
+        $params,
+    )->fetchAll();
+    $link = $_SESSION['reset_link'] ?? null;
+    unset($_SESSION['reset_link']);
+
+    ob_start(); ?>
+<div class="page-head">
+  <h1>Comptes</h1>
+  <p class="lead">Pour un mot de passe oublié, créez un lien et donnez-le au client. Il est valable <?= RESET_LINK_HOURS ?>&nbsp;heures et ne sert qu’une fois.</p>
+</div>
+<?php if (is_array($link)): ?>
+  <section class="panel" aria-labelledby="link-heading">
+    <h2 id="link-heading">Lien pour <?= e($link['name']) ?></h2>
+    <p>Donnez ce lien au client, par courriel ou de vive voix. Il ne sera plus affiché.</p>
+    <p class="code copy-link"><?= e($link['url']) ?></p>
+  </section>
+<?php endif ?>
+<form class="form form-inline" method="get" action="/gestion/comptes" role="search">
+  <div>
+    <label for="q">Nom ou courriel</label>
+    <input id="q" name="q" maxlength="190" value="<?= e($search) ?>">
+  </div>
+  <button class="button" type="submit">Chercher</button>
+</form>
+<?php if ($accounts === []): ?>
+  <p class="empty">Aucun compte ne correspond.</p>
+<?php else: ?>
+  <table class="data">
+    <thead><tr><th scope="col">Nom</th><th scope="col">Courriel</th><th scope="col">Rôle</th><th scope="col">Créé le</th><th scope="col">Réservations à venir</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+    <tbody>
+    <?php foreach ($accounts as $a): ?>
+      <tr>
+        <td><?= e($a['name']) ?></td>
+        <td><?= e($a['email']) ?></td>
+        <td><?= $a['role'] === 'staff' ? 'Personnel' : 'Client' ?></td>
+        <td><?= e(fr_date(new DateTimeImmutable($a['created_at']), true)) ?></td>
+        <td><?= (int) $a['upcoming'] ?></td>
+        <td class="actions">
+          <form method="post" action="/gestion/comptes/<?= (int) $a['id'] ?>/lien">
+            <?= csrf_field() ?><button class="link-button" type="submit">Lien de mot de passe</button>
+          </form>
+          <?php if ((int) $a['id'] !== $me['id']): ?>
+            <form method="post" action="/gestion/comptes/<?= (int) $a['id'] ?>/role">
+              <?= csrf_field() ?><button class="link-button" type="submit"><?= $a['role'] === 'staff' ? 'Retirer l’accès à la gestion' : 'Donner l’accès à la gestion' ?></button>
+            </form>
+            <form method="post" action="/gestion/comptes/<?= (int) $a['id'] ?>/supprimer">
+              <?= csrf_field() ?><button class="link-button link-danger" type="submit">Supprimer</button>
+            </form>
+          <?php endif ?>
+        </td>
+      </tr>
+    <?php endforeach ?>
+    </tbody>
+  </table>
+<?php endif ?>
+<?php
+    admin_page('Comptes', '/gestion/comptes', (string) ob_get_clean());
+}
+
+/** @return array{id: int, name: string, email: string, role: string} */
+function find_account(string $id): array
+{
+    $account = query('SELECT id, name, email, role FROM users WHERE id = ?', [(int) $id])->fetch();
+    if ($account === false) {
+        flash('Ce compte n’existe plus.', 'erreur');
+        redirect('/gestion/comptes');
+    }
+    return ['id' => (int) $account['id']] + $account;
+}
+
+function page_admin_account_link(string $id): void
+{
+    require_staff();
+    $account = find_account($id);
+    $_SESSION['reset_link'] = ['name' => $account['name'], 'url' => create_reset_link($account['id'])];
+    redirect('/gestion/comptes');
+}
+
+function page_admin_account_role(string $id): void
+{
+    $me = require_staff();
+    $account = find_account($id);
+    if ($account['id'] === $me['id']) {
+        flash('Vous ne pouvez pas changer votre propre accès.', 'erreur');
+        redirect('/gestion/comptes');
+    }
+    $role = $account['role'] === 'staff' ? 'client' : 'staff';
+    query('UPDATE users SET role = ? WHERE id = ?', [$role, $account['id']]);
+    flash($account['name'] . ($role === 'staff' ? ' a maintenant accès à la gestion.' : ' n’a plus accès à la gestion.'));
+    redirect('/gestion/comptes');
+}
+
+function page_admin_account_delete(string $id): void
+{
+    $me = require_staff();
+    $account = find_account($id);
+    if ($account['id'] === $me['id']) {
+        flash('Vous ne pouvez pas supprimer votre propre compte.', 'erreur');
+        redirect('/gestion/comptes');
+    }
+    query('DELETE FROM users WHERE id = ?', [$account['id']]);
+    flash('Compte de ' . $account['name'] . ' supprimé, avec ses réservations.');
+    redirect('/gestion/comptes');
 }
 
 // ---------------------------------------------------------------------

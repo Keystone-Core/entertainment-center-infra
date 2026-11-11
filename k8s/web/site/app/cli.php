@@ -8,6 +8,7 @@ declare(strict_types=1);
 //   staff <email>        give an account access to /gestion
 //   client <email>       remove that access
 //   delete-user <email>  delete an account and its reservations
+//   reset-link <email>   print a one-time link to choose a new password
 //   demo                 add demo screenings for the next 7 days
 
 if (PHP_SAPI !== 'cli') {
@@ -86,10 +87,14 @@ switch ($command) {
         echo "Deleted $email and its reservations" . PHP_EOL;
         break;
 
+    case 'reset-link':
+        echo create_reset_link(find_user_id($email)) . PHP_EOL;
+        break;
+
     case 'demo':
         echo add_demo_screenings() . ' screenings added' . PHP_EOL;
         break;
 
     default:
-        fail("Usage: php cli.php staff|client|delete-user <email>\n       php cli.php demo");
+        fail("Usage: php cli.php staff|client|delete-user|reset-link <email>\n       php cli.php demo");
 }
