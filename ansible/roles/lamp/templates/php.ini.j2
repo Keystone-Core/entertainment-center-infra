@@ -1,0 +1,6 @@
+; Gere par Ansible (role lamp) - ne pas modifier a la main
+; Memes reglages que le conteneur de k3s01 (k8s/web/php.yaml).
+date.timezone = {{ lamp_fuseau }}
+upload_max_filesize = 20M
+post_max_size = 25M
+expose_php = Off

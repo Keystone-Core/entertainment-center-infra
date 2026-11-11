@@ -49,3 +49,9 @@ caddy_sites:
   - nom: phpmyadmin
     upstream: 10.10.20.31:80
     reseaux: *vlans_internes
+
+  # Serveur web de developpement (LAMP sur web01) : le meme site, avec sa
+  # propre base (ansible/lamp.yml).
+  - nom: dev
+    upstream: 10.10.20.21:80
+    reseaux: *vlans_internes

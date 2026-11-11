@@ -1,0 +1,7 @@
+---
+# Lancer a part : ansible-playbook lamp.yml
+# Relancer apres un changement du site pour mettre web01 a jour.
+- name: Serveur web de developpement (LAMP)
+  hosts: web01
+  roles:
+    - lamp
