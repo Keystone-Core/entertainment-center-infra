@@ -55,6 +55,7 @@ Techniques de l'informatique (Computer Science Technology)
 - [Publishing Services with Caddy](guides/publishing-services-with-caddy.md): setting up `proxy01`, its Cloudflare token, and publishing a service over HTTPS
 - [Active Directory](guides/active-directory.md): structure of the `cde.lan` domain, the `structure-ad.ps1` script, activating accounts and joining machines
 - [FreePBX Telephony](guides/freepbx.md): the phone system on `voip01`, its extensions and passwords, setting up a phone, and running the `freepbx` role
+- [Netdata Monitoring](guides/netdata.md): the nine Linux servers streaming to `mon01`, opening the dashboard and each server's page, and running the `netdata` role
 - [Mosquitto MQTT Broker](guides/mosquitto.md): the broker on `mqtt01`, its accounts and topics, the Ansible Vault passwords and what is left for TLS
 - [Homarr Dashboard](guides/homarr.md): the dashboard on `dash01`, its encryption key and the `homarr` role
 - [Email and Help Desk](guides/email-and-tickets.md): hMailServer on `mail01` and osTicket on `tick01`

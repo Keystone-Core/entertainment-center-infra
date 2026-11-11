@@ -1,0 +1,14 @@
+# Gere par Ansible (role netdata) - ne pas modifier a la main
+{% if inventory_hostname == netdata_parent %}
+# Machines autorisees a envoyer leurs mesures avec la cle commune.
+[{{ netdata_cle_api }}]
+    type = api
+    enabled = yes
+    allow from = {{ netdata_enfants | join(' ') }}
+    db = dbengine
+{% else %}
+[stream]
+    enabled = yes
+    destination = {{ netdata_parent_ip }}:{{ netdata_port }}
+    api key = {{ netdata_cle_api }}
+{% endif %}

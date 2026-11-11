@@ -1,0 +1,79 @@
+---
+# Debian 13 n'a plus de paquet Netdata et Debian 12 a une version de 2022 :
+# le depot officiel donne la meme version partout.
+- name: Cle du depot Netdata
+  ansible.builtin.get_url:
+    url: https://repo.netdata.cloud/netdatabot.gpg.key
+    dest: /usr/share/keyrings/netdata-archive-keyring.asc
+    mode: "0644"
+
+- name: Depot Netdata
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/netdata.sources
+    content: |
+      # Gere par Ansible (role netdata) - ne pas modifier a la main
+      Types: deb
+      URIs: https://repo.netdata.cloud/repos/stable/debian/
+      Suites: {{ ansible_distribution_release }}/
+      Signed-By: /usr/share/keyrings/netdata-archive-keyring.asc
+    mode: "0644"
+  register: netdata_depot
+
+- name: Installer Netdata
+  ansible.builtin.apt:
+    name: netdata
+    state: present
+    update_cache: "{{ netdata_depot.changed }}"
+
+# Rien ne part vers Netdata Cloud ni vers leurs statistiques d'utilisation.
+- name: Netdata Cloud desactive
+  ansible.builtin.copy:
+    dest: /etc/netdata/cloud.conf
+    content: |
+      # Gere par Ansible (role netdata) - ne pas modifier a la main
+      [global]
+          enabled = no
+    mode: "0644"
+  notify: Redemarrer Netdata
+
+- name: Statistiques anonymes desactivees
+  ansible.builtin.copy:
+    dest: /etc/netdata/.opt-out-from-anonymous-statistics
+    content: ""
+    mode: "0644"
+  notify: Redemarrer Netdata
+
+- name: Dossier de la cle sur le poste de controle
+  ansible.builtin.file:
+    path: "{{ netdata_secrets }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+# Netdata attend un UUID : il est tire d'un secret aleatoire garde sur ctrl-iac.
+- name: Cle d'envoi des mesures
+  ansible.builtin.set_fact:
+    netdata_cle_api: "{{ lookup('ansible.builtin.password', netdata_secrets ~ '/cle-api length=32 chars=ascii_letters,digits') | to_uuid }}"
+  no_log: true
+
+- name: Configuration de Netdata (parent ou enfant)
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: /etc/netdata/{{ item.dest }}
+    owner: root
+    group: netdata
+    mode: "0640"
+  loop:
+    - { src: netdata.conf.j2, dest: netdata.conf }
+    - { src: stream.conf.j2, dest: stream.conf }
+  loop_control:
+    label: "{{ item.dest }}"
+  notify: Redemarrer Netdata
+
+- name: Netdata demarre
+  ansible.builtin.service:
+    name: netdata
+    state: started
+    enabled: true
