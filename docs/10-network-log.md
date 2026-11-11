@@ -20,7 +20,7 @@ The following table records each version of the log.
 | 1.9     | November 9, 2026   | Loucas Viens | pfSense, FreePBX, Veeam, osTicket, Homarr, the website and phpMyAdmin published by Caddy for VLANs 10 and 20; alias SERVICES_HTTPS and its DMZ rule; internal DNS records |
 | 1.10    | November 11, 2026  | Alexy Després | pve's port nic0 added to vmbr1 for the reception's IP phone (TEL-02, Cisco SPA303, 10.10.20.122); fw01 forwards SIP and RTP from the Xray VPN exit (10.85.2.124) to voip01 for the PCs' softphones, which wait for the Xray server to relay UDP |
 | 1.11    | November 11, 2026  | Alexy Després | The Xray VPN comes out through an Xray bridge on pve itself (10.85.2.127), not 10.85.2.124, and it relays UDP: fw01's VoIP forwarding and voip01's firewall now accept 10.85.2.127 |
-| 1.12    | November 11, 2026  | Alexy Després | LAMP development server installed on web01 (ansible/lamp.yml) and added to Caddy as dev.divertissementestrie.ca, which still needs the Caddy update and its internal DNS records; nightly backup of the website from ctrl-iac (T5.2) |
+| 1.12    | November 11, 2026  | Alexy Després | LAMP development server installed on web01 (ansible/lamp.yml), reachable at http://10.10.20.21 from VLAN 20 and not published by proxy01; nightly backup of the website from ctrl-iac (T5.2) |
 
 ## 10.1 Addressing Plan, Equipment and Assigned Users
 

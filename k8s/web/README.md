@@ -166,7 +166,7 @@ A restore checks the SHA-256 sums first, then replaces the tables and the poster
 
 | Item | Value |
 | ---- | ----- |
-| Address | `https://dev.divertissementestrie.ca` through `proxy01` (VLANs 10 and 20), or `http://10.10.20.21` from VLAN 20 |
+| Address | `http://10.10.20.21`, from VLAN 20 (staff and room workstations). It isn't published by `proxy01` |
 | Code | `/var/www/html/public` and `/var/www/html/app`, copied from this folder |
 | Database | `site` on web01, created from `schema.sql`; password in `/root/.cde-secrets/web01/base-site` on `ctrl-iac` |
 | Commands | `sudo cde-env php /var/www/html/app/cli.php staff <email>` on web01 |
@@ -184,6 +184,5 @@ The role only creates the schema on a new database: a table change needs the sam
 ## Not done yet
 
 - **Email:** the forgotten-password emails need an account for the site on mail01 (J. Leclerc) and the Secret `web-smtp`. For customers outside the centre, mail01 must also be able to deliver mail to the Internet (rules 11 and 12 on fw01). Until then, the staff give the links.
-- **dev.divertissementestrie.ca:** the site is in [`proxy01.yml`](../../ansible/inventory/host_vars/proxy01.yml), but Caddy must be updated (`ansible-playbook caddy.yml`) and the name must resolve to `proxy01` on fw01 and dc01 (host override, like the other sites).
 - **Backups off the Proxmox host:** the copies are on `ctrl-iac`, which runs on the same physical server as `k3s01`. Veeam (`bkp01`) could also copy `/root/sauvegardes`.
 - **Demo screenings** stay manual: `php_cli demo` before a presentation.
