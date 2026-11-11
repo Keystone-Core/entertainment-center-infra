@@ -5,6 +5,10 @@
 #   reseaux : seuls ces reseaux ont acces (les autres recoivent 403)
 #   ca      : certificat de l'autorite d'un amont HTTPS (relatif a ansible/)
 #   nom_tls : nom a verifier dans ce certificat, s'il ne contient pas l'adresse
+#   redirige_vers : redirige vers <ce nom>.divertissementestrie.ca (sans upstream)
+# Le nom "@" designe le domaine nu (divertissementestrie.ca).
+# fw01 redirige aussi son port WAN 8443 vers proxy01:443 (reseau du cegep et
+# VPN) : un site sans `reseaux` est donc joignable de la aussi.
 # Exemple :
 #   - nom: netdata
 #     upstream: 10.10.20.22:19999
@@ -43,9 +47,14 @@ caddy_sites:
   - nom: homarr
     upstream: 10.10.20.41:7575
     reseaux: *vlans_internes
-  - nom: www
-    upstream: 10.10.20.31:80
-    reseaux: *vlans_internes
   - nom: phpmyadmin
     upstream: 10.10.20.31:80
     reseaux: *vlans_internes
+
+  # Site public du centre, sans restriction de reseau : le pare-feu laisse
+  # passer les VLANs 10 et 20 (regle 2), et le reseau du cegep et le VPN par
+  # la redirection WAN 8443 de fw01. Le domaine nu redirige vers www.
+  - nom: www
+    upstream: 10.10.20.31:80
+  - nom: "@"
+    redirige_vers: www

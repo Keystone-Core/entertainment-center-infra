@@ -7,8 +7,9 @@
 	acme_dns cloudflare {env.CF_API_TOKEN}
 }
 {% for site in caddy_sites %}
+{% set adresse = caddy_domaine if site.nom == '@' else site.nom ~ '.' ~ caddy_domaine %}
 
-{{ site.nom }}.{{ caddy_domaine }} {
+{{ adresse }} {
 	# La DMZ ne laisse sortir que le web : Caddy ne peut pas interroger les
 	# serveurs DNS de Cloudflare (port 53) pour verifier la propagation. Il
 	# attend 30 s a la place ; Let's Encrypt verifie de son cote.
@@ -24,7 +25,15 @@
 	respond @refuse 403
 
 {% endif %}
-{% if site.ca is defined %}
+{% if site.redirige_vers is defined %}
+	# Redirection vers {{ site.redirige_vers }}. Les clients arrives par la
+	# redirection WAN de fw01 utilisent le port {{ caddy_port_wan }} : il est garde.
+	@par_wan header Host *:{{ caddy_port_wan }}
+	route {
+		redir @par_wan https://{{ site.redirige_vers }}.{{ caddy_domaine }}:{{ caddy_port_wan }}{uri}
+		redir https://{{ site.redirige_vers }}.{{ caddy_domaine }}{uri}
+	}
+{% elif site.ca is defined %}
 	# Amont en HTTPS, verifie avec le certificat de son autorite.
 	reverse_proxy {{ site.upstream }} {
 		transport http {

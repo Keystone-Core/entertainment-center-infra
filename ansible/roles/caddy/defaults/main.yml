@@ -8,5 +8,8 @@ caddy_cloudflare_token: "{{ lookup('env', 'CLOUDFLARE_API_TOKEN') }}"
 # Modules ajoutes au binaire de Caddy (challenge DNS chez Cloudflare)
 caddy_plugins:
   - github.com/caddy-dns/cloudflare
+# Port de l'adresse WAN de fw01 redirige vers proxy01:443 (reseau du cegep
+# et VPN). Les redirections (cle redirige_vers) le gardent.
+caddy_port_wan: 8443
 # Sites publies, definis dans inventory/host_vars/proxy01.yml
 caddy_sites: []
