@@ -117,7 +117,7 @@ $s.IconLocation = "$env:SystemRoot\System32\imageres.dll,74"
 $s.Save()
 ```
 
-Don't copy the script itself to the desktop: double-clicking a `.ps1` file opens it in Notepad, and `-Install` run from that copy would point the scheduled task to the desktop.
+Don't copy the script itself to the desktop: double-clicking a `.ps1` file opens it in Notepad. `-Install` refuses to run from anywhere but `C:\Scripts`, so the task always points there.
 
 | Option        | What it does                                                                                   |
 | ------------- | ---------------------------------------------------------------------------------------------- |
@@ -127,6 +127,20 @@ Don't copy the script itself to the desktop: double-clicking a `.ps1` file opens
 | 4. Reactiver  | Brings a former employee back to `Employes`, enabled, in `GG-Employes` and its department's group, with a new temporary password; the department and post from before are suggested |
 | 5. Lister     | The employees with their department and post, and the former employees                         |
 | 6. Importer   | Processes the drop folder now, without waiting for the task                                    |
+| 7. Automatisation | Controls the scheduled task (below)                                                        |
+
+**7. Automatisation** controls the automation from the menu:
+
+| Option | What it does |
+| ------ | ------------ |
+| 1. Etat de la tache | Enabled or not, frequency, last run and its result, next run, script run, files waiting in `A-traiter` |
+| 2. Lancer maintenant | Runs the task now (as `SYSTEM`, like every quarter hour) and shows what it did |
+| 3. Activer ou desactiver | Disabled, the task stops processing `A-traiter` until it's enabled again |
+| 4. Changer la frequence | From 5 to 1440 minutes (15 by default) |
+| 5. Voir le journal | The last 20 lines of `Rapports\journal.log` |
+| 6. Voir le dernier rapport | The latest report as a table in the console, and the path of its HTML version |
+| 7. Creer un modele CSV | `modele-employes.csv` with the column headers, at the root of the share for management |
+| 8. Reinstaller | Same as `-Install`: folders, share, rights and task, keeping the task's frequency and state |
 
 - An employee is found by account name or part of the name, with or without accents; when several match, the menu asks which one.
 - Every change is shown and confirmed (`o`/`n`) before it's applied, and recorded in `Rapports\journal.log` with the administrator's name.
@@ -144,7 +158,7 @@ On `dc01`, as a domain administrator, from `C:\Scripts`:
 .\Importer-Employes.ps1 -Install                              # folders, share, rights and scheduled task (again)
 ```
 
-`-Install` also restricts `C:\Scripts` to administrators (read-only for the others), since the task runs this script as `SYSTEM` on the domain controller.
+`-Install` also restricts `C:\Scripts` to administrators (read-only for the others), since the task runs this script as `SYSTEM` on the domain controller. It refuses to run from another folder, and an existing task keeps the frequency and state set from the menu.
 
 | Exit code | Meaning                                   |
 | --------- | ----------------------------------------- |
