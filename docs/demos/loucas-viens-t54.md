@@ -1,6 +1,6 @@
-# Demo: Loucas Viens, Employee Import Script (T5.4, 8 minutes)
+# Demo: Loucas Viens, Employee Import Script (T5.4, 10 minutes)
 
-My automation script, [`Importer-Employes.ps1`](../../windows/Importer-Employes.ps1), creates the accounts of new employees and disables those who leave, from a CSV file that management drops in a shared folder on `dc01`. Its reference documentation is in the [Active Directory guide](../guides/active-directory.md#importing-employees-t54).
+My automation script, [`Importer-Employes.ps1`](../../windows/Importer-Employes.ps1), creates the accounts of new employees and disables those who leave, from a CSV file that management drops in a shared folder on `dc01`. An administrator can also add, modify, remove or reactivate an employee from its interactive menu. Its reference documentation is in the [Active Directory guide](../guides/active-directory.md#importing-employees-t54).
 
 | Part | Time | How |
 | ---- | ---- | --- |
@@ -10,7 +10,8 @@ My automation script, [`Importer-Employes.ps1`](../../windows/Importer-Employes.
 | 4. The result | 1 min 30 s | Accounts, report, passwords |
 | 5. The same file again | 30 s | Drop it again |
 | 6. A departure | 1 min | Drop the second file |
-| 7. Safety | 1 min | Say it |
+| 7. The interactive menu | 2 min | Add, modify, reactivate |
+| 8. Safety | 1 min | Say it |
 
 The demo files are in [`windows/demo-t54/`](../../windows/demo-t54/), and already on `dc01` in `C:\Scripts\demo`. They create three fictional employees whose post starts with `DEMO-`, and [`Nettoyer-Demo.ps1`](../../windows/demo-t54/Nettoyer-Demo.ps1) deletes exactly that afterwards.
 
@@ -141,11 +142,29 @@ Get-ADUser olivier.bouchard -Properties Description | Select-Object Enabled, Dis
 
 **What to say:** nothing is deleted: the account can be checked or reactivated later, but it can no longer log on.
 
-## 7. Safety (1 min)
+## 7. The interactive menu (2 min)
+
+**What to say:** for one person, there's no need for a file. The same script has a menu for an administrator, with the same protections; every change is confirmed before it's applied and recorded in the log with the administrator's name.
+
+**What to show**
+
+```powershell
+.\Importer-Employes.ps1 -Menu
+```
+
+| Type | What it shows |
+| ---- | ------------- |
+| `1`, `Julie`, `Tremblay`, `Accueil`, `DEMO-MENU`, `o` | A new account, and its temporary password shown once |
+| `2`, `julie`, `1`, `Gerance`, `o` | A change of department: `retire de GG-Reception`, the groups follow |
+| `4`, `olivier`, Enter, Enter, `o` | Olivier, who left in part 6, comes back: his department and post from before are suggested, and he gets a new temporary password |
+| `5` | The list: Julie in management, Olivier back |
+| `0` | Quit |
+
+## 8. Safety (1 min)
 
 **What to say**
 
-- The script never changes the password of an existing account.
+- The import never changes the password of an existing account; only a reactivation, asked for in the menu, gives a new one.
 - A departure only applies to `CDE/Employes`, and never to a member of an administration group. Those groups are recognised by their SID, because their names change with the language of Windows.
 - A line in error doesn't stop the others; the task ends with code 1 and the report says why.
 - The task runs as `SYSTEM` on the domain controller, so no service account password is stored anywhere. In exchange, `C:\Scripts` can only be modified by administrators.
@@ -156,7 +175,7 @@ Get-ADUser olivier.bouchard -Properties Description | Select-Object Enabled, Dis
 .\demo\Nettoyer-Demo.ps1
 ```
 
-**Expected:** `total : 3 compte(s), 7 fichier(s)`. It deletes the three demo accounts, the demo files in `Traites`, their reports and their password file, and nothing else; the log (`journal.log`) is kept.
+**Expected:** `total : 4 compte(s), 9 fichier(s)` (without part 7: `3 compte(s), 7 fichier(s)`). It deletes the demo accounts (their post starts with `DEMO-`), the demo files in `Traites`, their reports and the password files of the demo, and nothing else; the log (`journal.log`) is kept.
 
 ## Questions to Expect
 
@@ -169,6 +188,8 @@ Get-ADUser olivier.bouchard -Properties Description | Select-Object Enabled, Dis
 **What if two people have the same name?** For an arrival, the script can't tell them apart: the second one is skipped as already existing, and is created by hand. Two different names that give the same account name (once accents are removed, or past 20 characters) get a number (`marie.tremblay2`). For a departure, the script refuses to guess and asks for the `Compte` column.
 
 **What if Excel saves the file in its own format?** The script reads UTF-8 and Excel's Windows-1252 encoding, with `;` or `,` as separator.
+
+**Why keep the CSV file if there's a menu?** The import is the automation: management fills in a spreadsheet and nothing else has to happen, even at night. The menu is for an administrator's one-off changes. Both use the same functions and protections.
 
 **Why not delete the accounts of people who leave?** A disabled account keeps its history and can be checked or reactivated. It can't log on any more, which is what matters for security.
 
@@ -188,4 +209,4 @@ Get-ADUser olivier.bouchard -Properties Description | Select-Object Enabled, Dis
 - No mailbox on `mail01` (hMailServer) or osTicket agent is created for the new employee: those are done by hand.
 - Management isn't notified by email; they read the report in `\\dc01\Employes$\Rapports`.
 - The share isn't reachable through the VPN (VLAN 10 doesn't have port 445): use a domain workstation, or SSH to `dc01` as in this demo.
-- A returning employee is skipped with a note and reactivated by hand.
+- A returning employee is skipped by the import, and reactivated from the menu (option 4).
