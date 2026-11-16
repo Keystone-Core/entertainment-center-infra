@@ -11,7 +11,7 @@ One file per team member: a full demo of their part of the project, with the exp
 | Member | Demo | Tasks |
 | ------ | ---- | ----- |
 | Alexy Després | [Full (25 min)](alexy-despres.md), [short (5 min)](alexy-despres-abr.md) | Terraform (T1.3), k3s (T1.5), FreePBX telephony (T3.1), LAMP web server and website (T3.2), Netdata (T3.3), website backup script (T5.2) |
-| Loucas Viens | *to come* | |
+| Loucas Viens | [Employee import script (8 min)](loucas-viens-t54.md); full demo to come | Employee import script (T5.4) |
 | Nicolas-André Anillo | *to come* | |
 | Joshua Leclerc | *to come* | |
 
