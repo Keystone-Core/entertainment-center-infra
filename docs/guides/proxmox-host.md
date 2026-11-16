@@ -5,7 +5,7 @@
 | Item    | Value                                                                   |
 | ------- | ----------------------------------------------------------------------- |
 | Node    | `pve`, Proxmox VE 9.2                                                   |
-| Address | `10.85.2.127`, on the cégep network (planned: `10.10.10.10` in VLAN 10) |
+| Address | `10.85.2.127` on the cégep network (`vmbr0`), and `10.10.10.10` in VLAN 10 (`vmbr1.10`) |
 | Web     | `https://10.85.2.127:8006`, or `https://proxmox.divertissementestrie.ca` from VLANs 10 and 20 |
 
 ## Network
@@ -15,6 +15,8 @@
 | `vmbr0` | `nic3`           | Cégep network: the host itself and the WAN of `fw01`                |
 | `vmbr1` | `nic0`           | The centre's VLANs, VLAN-aware. VLAN 20 is untagged. `nic0` has the reception's IP phone (TEL-02) plugged in directly |
 
+`pve` itself is in VLAN 10 through `vmbr1.10` (`10.10.10.10/24`), with a route to `10.10.0.0/16` through fw01 (`10.10.10.1`); its default route stays on the cégep network. `pve` doesn't forward traffic between networks (`net.ipv4.ip_forward = 0`): keep it that way, or the cégep network could reach VLAN 10 without going through fw01. The interface was added without `ifreload -a`, whose dry run restarted `vmbr0` too; a copy of the file from before is in `/root/interfaces.avant-vlan10`.
+
 `nic1`, `nic2` and `nic4` to `nic7` are free. **Never connect `vmbr1` to the cégep network**: it would bypass the firewall, and `dc01` would serve DHCP to the cégep's machines.
 
 ## Xray Bridge
@@ -23,9 +25,20 @@ The team's VPN comes into the cégep network through an Xray bridge running on `
 
 1. The bridge opens an outgoing connection to the portal, an Xray server outside the centre (`184.163.50.238`, TCP 443, VLESS with REALITY). No incoming port is needed at the cégep.
 2. The VPN clients connect to the same portal, which sends their traffic back through that connection.
-3. The bridge lets the traffic out as is: it comes from `pve`'s address, `10.85.2.127`, on the cégep network.
+3. The bridge lets the traffic out from `pve`: towards the centre's VLANs from `10.10.10.10` (VLAN 10), towards the rest from `10.85.2.127` (cégep network).
 
-From the VPN, you reach `pve`, the cégep network and `fw01`'s WAN address, not the VLANs: `pve` has no route to `10.10.0.0/16` ([network log](../10-network-log.md), section 10.1).
+From the VPN, you therefore reach `pve`, the cégep network, `fw01`'s WAN address (softphones) and the centre's VLANs, with the rights of VLAN 10 (rule 1: SSH, HTTPS, RDP, Proxmox...). The bridge resolves the names in `divertissementestrie.ca` and `cde.lan` through fw01 (`10.10.10.1`), so `https://proxmox.divertissementestrie.ca` or `ssh dc01.cde.lan` work as is from a connected PC.
+
+The portal only sends the bridge what its routing rules select. On the portal, the rules whose `outboundTag` is `portal` must cover:
+
+| Rule     | Content                                                                                   |
+| -------- | ----------------------------------------------------------------------------------------- |
+| Tunnel   | `"domain": ["full:reverse.proxmox"]` (the bridge's own connection)                       |
+| Networks | `"ip": ["10.85.2.127/32", "10.10.0.0/16"]`                                                |
+| Softphones | `"ip": ["10.85.2.16/32", "10.85.2.127/32", "10.10.0.0/16"]`, `"port": "5060,10000-20000"` |
+| Names    | `"domain": ["domain:divertissementestrie.ca", "domain:cde.lan"]`                           |
+
+On the PCs, the Xray client (Hiddify) must be in VPN (TUN) mode. **Don't run Tailscale at the same time**: once connected, it takes over Windows' DNS and nothing goes through the VPN's DNS any more.
 
 | Item          | Value                                                                       |
 | ------------- | --------------------------------------------------------------------------- |
@@ -33,7 +46,8 @@ From the VPN, you reach `pve`, the cégep network and `fw01`'s WAN address, not 
 | Binary        | `/usr/local/bin/xray`, Xray 26.3.27 (`Xray-linux-64.zip` from the Xray-core releases) |
 | Configuration | `/etc/xray-bridge/config.json`                                               |
 | Copy          | [`proxmox/xray-bridge/`](../../proxmox/xray-bridge/): the systemd unit, and the configuration encrypted with Ansible Vault |
-| Portal        | Its configuration is on that server, not in this repository                 |
+| Portal        | Its configuration is on that server, not in this repository (rules above)  |
+| Internal DNS  | `dns` section: `10.10.10.1` for `divertissementestrie.ca` and `cde.lan`, `pve`'s own resolver otherwise; the `direct` outbound resolves with it (`UseIPv4`) |
 
 The configuration holds the client ID and the REALITY keys. Its copy is encrypted with the same key as the MQTT passwords, `~/.vault_pass_cde`, which exists only on `ctrl-iac`. To read it, on `ctrl-iac`:
 
