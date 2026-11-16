@@ -99,7 +99,7 @@ Microsoft Defender Antivirus, managed by a domain GPO, protects the staff workst
 - The firewall is **default-deny**: any flow not explicitly allowed is blocked and logged.
 - **Public workstations** (VLAN 40) can reach only the Internet (web), the firewall's DNS resolver and the game servers. They are blocked from every internal VLAN and don't join the domain.
 - **Connected devices** (VLAN 60) can't reach the Internet or other VLANs, except for the Netdata agents reporting to `mon01`. MQTT runs on port 1883 for now; TLS on 8883 is still to be done.
-- **Service web interfaces** are published over HTTPS by `proxy01`, and Caddy manages the certificates. The only exception is Jellyfin, which the projection PCs reach directly inside VLAN 20. The administration interfaces (Proxmox, pfSense, FreePBX, Veeam, phpMyAdmin) are published for VLANs 10 and 20 only.
+- **Service web interfaces** are published over HTTPS by `proxy01`, and Caddy manages the certificates. The projection PCs can also reach Jellyfin directly inside VLAN 20. The administration interfaces (Proxmox, pfSense, FreePBX, Veeam, phpMyAdmin) are published for VLANs 10 and 20 only.
 - **Linux servers** accept SSH keys only. Their `root` and `ansible` accounts share one password, which works only on the Proxmox console.
 - **Remote administration** is planned through the Xray VPN server (`10.10.20.200`), which isn't deployed yet. The firewall forwards TCP 443 on its WAN address to it, and nothing else of the internal network is published.
 - **Internet-facing services** (VPN, email and game instances) use port forwarding and dynamic DNS on the firewall's WAN address.
@@ -146,7 +146,7 @@ The critical path is infrastructure, then security, then services, then the medi
 | Windows services      | Active Directory, DNS, DHCP, hMailServer, Veeam and Defender in service; osTicket runs on Debian |
 | MQTT and ESP32        | Broker in service without TLS. No module connected yet                                      |
 | Automation scripts    | Veeam monitoring (T5.3) and the website backup (T5.2) in service. The other two aren't in the repository yet |
-| Media, Homarr and AMP | Homarr in service. Jellyfin, the \*arr suite and AMP not installed yet                      |
+| Media, Homarr and AMP | Homarr and Jellyfin in service. The \*arr suite and AMP not installed yet                      |
 | Testing               | To come, weeks 14 and 15                                                                    |
 
 ## Documentation

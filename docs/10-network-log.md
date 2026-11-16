@@ -22,6 +22,7 @@ The following table records each version of the log.
 | 1.11    | November 11, 2026  | Alexy Després | The Xray VPN comes out through an Xray bridge on pve itself (10.85.2.127), not 10.85.2.124, and it relays UDP: fw01's VoIP forwarding and voip01's firewall now accept 10.85.2.127 |
 | 1.12    | November 11, 2026  | Alexy Després | LAMP development server installed on web01 (ansible/lamp.yml), reachable at http://10.10.20.21 from VLAN 20 and not published by proxy01; nightly backup of the website from ctrl-iac (T5.2) |
 | 1.13    | November 11, 2026  | Alexy Després | Netdata on the nine Linux servers: each one streams to mon01 on 19999/TCP (rules 1 and 6), which keeps the history, raises the alerts and serves the dashboard to VLANs 10 and 20 |
+| 1.14    | November 16, 2026  | Loucas Viens | Jellyfin, running on media01, published by proxy01 as jellyfin.divertissementestrie.ca for VLANs 10 and 20; internal DNS records |
 
 ## 10.1 Addressing Plan, Equipment and Assigned Users
 
@@ -39,7 +40,7 @@ The initial plan had eight VLANs, with separate networks for the staff workstati
 
 Within VLAN 20, the addresses are divided by type of device: .10 to .99 for the servers (static addressing), .100 to .149 for the workstations and phones (DHCP reservations) and .150 to .199 for the dynamic DHCP pool.
 
-**Implementation status (version 1.9).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
+**Implementation status (version 1.14).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
 
 - **pve01** keeps its address on the cégep network (10.85.2.127, bridge vmbr0) instead of 10.10.10.10. fw01's WAN interface is also on that network and gets its address by DHCP (10.85.2.16 at the time of writing).
 - **The control station** is the container ctrl-iac (LXC 110), at 10.10.10.20 in VLAN 10 as planned. It uses fw01 (10.10.10.1) as DNS server, which also resolves the cde.lan domain. Since pve01 is on the cégep network, it reaches the Proxmox API through fw01 (section 10.3, GESTION).
@@ -66,7 +67,7 @@ Within VLAN 20, the addresses are divided by type of device: .10 to .99 for the 
 - **MQTT:** mqtt01 listens on 1883/TCP, without TLS, with accounts and access rules. TLS on 8883 is still to be done; until then, rule 3 has no effect ([guide](guides/mosquitto.md)).
 - **Website:** the public site runs on k3s01 (`k8s/web`), and web01 runs the same site on Apache, PHP and MariaDB as the development server (`ansible/lamp.yml`), with its own database. ctrl-iac backs up the public site's database and posters every night (`ansible/sauvegarde-site.yml`), through the Kubernetes API (rule 1, TCP 6443).
 - **Netdata:** the nine Linux servers stream their metrics to mon01, which serves the dashboard (`ansible/netdata.yml`, [guide](guides/netdata.md)).
-- **Services not installed yet:** the media stack on media01 and AMP on game01. These VMs only have the base Ansible role.
+- **Media:** Jellyfin runs on media01 (Debian package, installed by hand, not managed by Ansible) and is published by proxy01. Not installed yet: the \*arr suite and qBittorrent on media01, and AMP on game01, which only has the base Ansible role.
 - **VMs outside Terraform:** dc01, mail01, tick01, bkp01, veeam-worker and ctrl-iac were created by hand ([Proxmox host guide](guides/proxmox-host.md)).
 
 The firewall's WAN interface receives a dynamic public address from the Internet service provider. Remote access goes through an Xray VPN server at 10.10.20.200, reached through a port forwarding of TCP 443 on the WAN interface. The services published to the Internet (email and game instances) and the obtaining of certificates rely on a public domain name, whose DNS record is automatically updated (dynamic DNS) from the changing public address of the WAN interface. The dc01 server provides the domain's DNS and DHCP; it serves VLAN 20 directly, and the firewall relays the DHCP requests of VLAN 40. The public workstations (VLAN 40), however, use neither the DNS nor the authentication of the domain: they rely on the firewall's DNS resolver, and only their DHCP lease is served by dc01, through the relay.
@@ -269,7 +270,7 @@ Compared with the policy of section 10.2, the configuration differs as follows:
 
 - DNS and NTP go to fw01's address in each VLAN instead of dc01 and the Internet; fw01 resolves names and syncs its clock with the cégep servers. The Linux hosts take their DNS server and NTP server from their gateway (Terraform and Ansible).
 - Traffic to the Internet is limited to TCP 80 and 443.
-- proxy01 publishes the web interfaces of Proxmox, pfSense, FreePBX, Veeam, osTicket and Homarr, the website and phpMyAdmin as `<name>.divertissementestrie.ca`, for VLANs 10 and 20 only (Caddy answers 403 to the other networks; list in the [Caddy guide](guides/publishing-services-with-caddy.md#published-sites)). Each name resolves to proxy01 (10.10.80.10) through a host override on fw01 and a dedicated zone on dc01. Through proxy01, FreePBX is reachable from VLAN 20, which the direct access doesn't allow.
+- proxy01 publishes the web interfaces of Proxmox, pfSense, FreePBX, Veeam, osTicket, Homarr and Jellyfin, the website and phpMyAdmin as `<name>.divertissementestrie.ca`, for VLANs 10 and 20 only (Caddy answers 403 to the other networks; list in the [Caddy guide](guides/publishing-services-with-caddy.md#published-sites)). Each name resolves to proxy01 (10.10.80.10) through a host override on fw01 and a dedicated zone on dc01. Through proxy01, FreePBX is reachable from VLAN 20, which the direct access doesn't allow.
 - **Not configured yet:** rules 11 and 12 (email), rule 13 (game port forwarding, planned once AMP runs on game01; it also needs the cégep's agreement since fw01's WAN is on its network).
 
 The rules were checked on November 2, 2026 from the hosts of each VLAN (VLAN 10 from ts01, DMZ from proxy01 and game01, IOT from mqtt01, VLAN 20 from web01) and from temporary test hosts in VLANs 10, 40, 60 and 80: every allowed flow passed and every blocked flow was blocked. The DHCP of VLANs 20 (direct) and 40 (relay) was checked the same day with temporary DHCP clients, whose leases were then removed from dc01. This section was compared again with fw01's configuration on November 9, 2026.
