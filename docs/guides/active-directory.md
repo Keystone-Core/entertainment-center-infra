@@ -55,13 +55,14 @@ Enable-ADAccount loucas
 
 ## Importing Employees (T5.4)
 
-[`windows/Importer-Employes.ps1`](../../windows/Importer-Employes.ps1) creates the accounts of new employees and disables the accounts of those who leave, from a CSV file. Management drops the file in a shared folder, and the script does the rest.
+[`windows/Importer-Employes.ps1`](../../windows/Importer-Employes.ps1) creates the accounts of new employees and disables the accounts of those who leave, from a CSV file. Management drops the file in a shared folder, and the script does the rest. An administrator can also make the same changes one at a time, and modify or reactivate an employee, from an [interactive menu](#interactive-menu).
 
 | Item           | Value                                                                                   |
 | -------------- | --------------------------------------------------------------------------------------- |
 | Script         | `C:\Scripts\Importer-Employes.ps1` on `dc01`                                            |
 | Drop folder    | `\\dc01\Employes$\A-traiter` (`C:\CDE\Employes`), from a staff workstation               |
 | Schedule       | Task "CDE - Import des employes", every 15 minutes, as `SYSTEM`                        |
+| Menu           | `.\Importer-Employes.ps1 -Menu` on `dc01`, as a domain administrator                     |
 | Who can use it | `GG-Gerance` drops files and reads the reports and passwords; administrators have full access; nobody else |
 
 **Arrival:** the account is created in `CDE/Employes`, named `firstname.lastname` (lowercase, without accents, 20 characters at most), added to `GG-Employes` and to its department's group, and enabled with a random 16-character temporary password that must be changed at first logon.
@@ -90,11 +91,34 @@ Départ;Jean;Côté;;;
 
 ### Safety Rules
 
-- An existing person is skipped: the script never changes the password of an existing account, so a file can be dropped twice.
+- An existing person is skipped: the import never changes the password of an existing account, so a file can be dropped twice. Only a reactivation, asked for in the menu, gives a new temporary password.
 - A departure only applies to an account in `CDE/Employes`, and never to a member of an administration group (recognised by SID, including nested membership).
 - The team's four accounts are ordinary employee accounts: a departure line for `loucas` would disable it. Check the file first with `-Simulation`.
-- A former employee who comes back is skipped with a note: re-enable the account by hand (`Enable-ADAccount`, move it back to `Employes`, add its groups, give it a temporary password).
+- A former employee who comes back is skipped by the import with a note: reactivate them from the menu (option 4).
 - Every line in error is listed in the report with its reason; the other lines are still processed.
+
+### Interactive Menu
+
+For a single change, an administrator doesn't need a CSV file. On `dc01`, as a domain administrator (through the VPN: `ssh dc01.cde.lan`, then `powershell`):
+
+```powershell
+cd C:\Scripts
+.\Importer-Employes.ps1 -Menu              # add -Simulation to try it without changing anything
+```
+
+| Option        | What it does                                                                                   |
+| ------------- | ---------------------------------------------------------------------------------------------- |
+| 1. Ajouter    | Asks for the first and last name, department and post, shows the account to be created, then creates it like an arrival |
+| 2. Modifier   | Department (the account moves to the new department's group), post, or first and last name (the logon name doesn't change) |
+| 3. Retirer    | Like a departure: disabled, removed from its groups, moved to `Anciens`                         |
+| 4. Reactiver  | Brings a former employee back to `Employes`, enabled, in `GG-Employes` and its department's group, with a new temporary password; the department and post from before are suggested |
+| 5. Lister     | The employees with their department and post, and the former employees                         |
+| 6. Importer   | Processes the drop folder now, without waiting for the task                                    |
+
+- An employee is found by account name or part of the name, with or without accents; when several match, the menu asks which one.
+- Every change is shown and confirmed (`o`/`n`) before it's applied, and recorded in `Rapports\journal.log` with the administrator's name.
+- A temporary password is shown once on screen, and copied to `Mots-de-passe` for 7 days, like the import's.
+- The same protections apply: accounts outside `CDE/Employes` and administrators are refused.
 
 ### Running It by Hand
 

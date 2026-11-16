@@ -6,8 +6,9 @@
     1. Supprime les comptes de CDE (Employes ou Anciens) dont la description
        contient "poste DEMO-" : ceux des fichiers demo-*.csv.
     2. Supprime les fichiers de la demo dans C:\CDE\Employes : les CSV demo-*
-       (A-traiter, Traites), les rapports qui les traitent et les fichiers de
-       mots de passe de ces rapports.
+       (A-traiter, Traites), les rapports qui les traitent, les fichiers de mots
+       de passe de ces rapports et ceux du menu qui ne contiennent que des comptes
+       de la demo.
     Le journal (Rapports\journal.log) est garde.
 
     Ecrit sans accents : le presse-papiers de la console Proxmox (noVNC) les abime.
@@ -49,6 +50,14 @@ foreach ($r in $rapports) {
     # Les mots de passe d'un traitement portent le meme horodatage que son rapport.
     $mdp = Join-Path (Join-Path $Dossier 'Mots-de-passe') ($r.Name -replace '^rapport-(.*)\.html$', 'mots-de-passe-$1.csv')
     if (Test-Path $mdp) { $fichiers.Add((Get-Item $mdp)) }
+}
+# Mots de passe donnes par le menu (-Menu) aux comptes de la demo.
+$noms = @($comptes | ForEach-Object { $_.SamAccountName })
+if ($noms) {
+    Get-ChildItem (Join-Path $Dossier 'Mots-de-passe') -Filter 'mots-de-passe-*.csv' -File -ErrorAction SilentlyContinue |
+        Where-Object { $f = $_; -not ($fichiers | Where-Object { $_.FullName -eq $f.FullName }) } |
+        Where-Object { $c = @(Import-Csv $_.FullName -Delimiter ';' | ForEach-Object { $_.Compte }); @($c | Where-Object { $noms -notcontains $_ }).Count -eq 0 } |
+        ForEach-Object { $fichiers.Add($_) }
 }
 foreach ($f in $fichiers) {
     if (-not $Simulation) { Remove-Item -LiteralPath $f.FullName -Force }
