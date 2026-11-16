@@ -8,6 +8,7 @@
 cde.lan
 └── CDE
     ├── Employes     loucas, nicolas, joshua, alexy   ← GPO "CDE - Verrouillage de session"
+    ├── Anciens      Disabled accounts of former employees (import script, T5.4)
     ├── Groupes      GG-Employes, GG-Gerance, GG-Reception, GG-Soutien, GG-Polyvalent
     ├── Serveurs     Windows member servers (mail01, bkp01), none joined yet
     └── Postes
@@ -52,6 +53,68 @@ Set-ADAccountPassword loucas -Reset -NewPassword (Read-Host -AsSecureString 'Tem
 Enable-ADAccount loucas
 ```
 
+## Importing Employees (T5.4)
+
+[`windows/Importer-Employes.ps1`](../../windows/Importer-Employes.ps1) creates the accounts of new employees and disables the accounts of those who leave, from a CSV file. Management drops the file in a shared folder, and the script does the rest.
+
+| Item           | Value                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------- |
+| Script         | `C:\Scripts\Importer-Employes.ps1` on `dc01`                                            |
+| Drop folder    | `\\dc01\Employes$\A-traiter` (`C:\CDE\Employes`), from a staff workstation               |
+| Schedule       | Task "CDE - Import des employes", every 15 minutes, as `SYSTEM`                        |
+| Who can use it | `GG-Gerance` drops files and reads the reports and passwords; administrators have full access; nobody else |
+
+**Arrival:** the account is created in `CDE/Employes`, named `firstname.lastname` (lowercase, without accents, 20 characters at most), added to `GG-Employes` and to its department's group, and enabled with a random 16-character temporary password that must be changed at first logon.
+
+**Departure:** the account is disabled, removed from its groups and moved to `CDE/Anciens`. Its description keeps the date and its former role. Nothing is deleted.
+
+After each file, the script writes an HTML report to `Rapports` and the temporary passwords to `Mots-de-passe`, then moves the file to `Traites`. Password files are deleted after 7 days; hand the passwords out before then.
+
+### The CSV File
+
+Semicolon or comma separator, UTF-8 or the CSV format saved by Excel. Accents are fine. Example: [`windows/employes-exemple.csv`](../../windows/employes-exemple.csv).
+
+```
+Action;Prenom;Nom;Service;Poste;Compte
+Arrivée;Marie-Ève;Tremblay;Accueil;PC-REC-02;
+Départ;Jean;Côté;;;
+```
+
+| Column    | Content                                                                          |
+| --------- | -------------------------------------------------------------------------------- |
+| `Action`  | `Arrivée` or `Départ` (with or without accents)                                   |
+| `Prenom`, `Nom` | First and last name                                                     |
+| `Service` | For an arrival: `Gerance`, `Accueil`, `Soutien` or `Polyvalent`                    |
+| `Poste`   | Optional, added to the account's description                                     |
+| `Compte`  | Optional, for a departure: the exact account, when the name isn't enough        |
+
+### Safety Rules
+
+- An existing person is skipped: the script never changes the password of an existing account, so a file can be dropped twice.
+- A departure only applies to an account in `CDE/Employes`, and never to a member of an administration group (recognised by SID, including nested membership).
+- The team's four accounts are ordinary employee accounts: a departure line for `loucas` would disable it. Check the file first with `-Simulation`.
+- A former employee who comes back is skipped with a note: re-enable the account by hand (`Enable-ADAccount`, move it back to `Employes`, add its groups, give it a temporary password).
+- Every line in error is listed in the report with its reason; the other lines are still processed.
+
+### Running It by Hand
+
+On `dc01`, as a domain administrator, from `C:\Scripts`:
+
+```powershell
+.\Importer-Employes.ps1 -Fichier .\nouveaux.csv -Simulation   # shows what would be done
+.\Importer-Employes.ps1 -Fichier .\nouveaux.csv               # processes this file (it isn't moved)
+.\Importer-Employes.ps1                                       # processes the drop folder now
+.\Importer-Employes.ps1 -Install                              # folders, share, rights and scheduled task (again)
+```
+
+`-Install` also restricts `C:\Scripts` to administrators (read-only for the others), since the task runs this script as `SYSTEM` on the domain controller.
+
+| Exit code | Meaning                                   |
+| --------- | ----------------------------------------- |
+| 0         | Everything done, or nothing to process    |
+| 1         | At least one line in error (see the report) |
+| 2         | Script error (see `Rapports\journal.log`) |
+
 ## Staff workstations
 
 The four staff workstations are Windows 11 VMs on `pve`, in VLAN 20, created by [`windows/creer-postes.sh`](../../windows/creer-postes.sh) (run as root on `pve`; it only creates the VMs that don't exist):
@@ -91,6 +154,7 @@ Add-Computer -DomainName cde.lan -NewName PC-GER-01 -OUPath 'OU=Personnel,OU=Pos
 
 - Structure, accounts, password policy and GPOs: created and checked; a further run of the scripts changes nothing.
 - **Accounts:** the four employee accounts are active.
+- **Employee import (T5.4):** installed on November 16, 2026. Tested through the scheduled task with two test accounts, since deleted: arrivals, a departure, a second run of the same file (nothing changed), and lines in error (unknown department, unknown person, the built-in `Administrator` refused). The drop from a management workstation through the share hasn't been tested yet.
 - **Member servers:** none yet. `mail01` (VM 103) and `bkp01` (VM 2013) are still in a workgroup (J. Leclerc). `tick01` runs Debian and doesn't join the domain.
 - **Workstations:** the four VMs run Windows 11, are joined to the domain and are in `Postes/Personnel`. They have no QEMU guest agent, so Proxmox can't query them. Physical workstations can't connect until a physical port is added to `vmbr1` (network log, section 10.1).
 - **`dc01`:** OpenSSH and WinRM are running. The service account `svc-dhcp` stays in the default `Users` container.
