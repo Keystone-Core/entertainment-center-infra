@@ -106,6 +106,19 @@ cd C:\Scripts
 .\Importer-Employes.ps1 -Menu              # add -Simulation to try it without changing anything
 ```
 
+On `dc01` itself, the desktop of `CDE\Administrator` has a shortcut, **Employes du CDE**, that opens the menu with a double-click. It runs the copy in `C:\Scripts`, the same one as the scheduled task, and keeps the window open if the script stops on an error. To create it again:
+
+```powershell
+$s = (New-Object -ComObject WScript.Shell).CreateShortcut("$HOME\Desktop\Employes du CDE.lnk")
+$s.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+$s.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"& 'C:\Scripts\Importer-Employes.ps1' -Menu; if (`$LASTEXITCODE -gt 0) { Read-Host 'Erreur : appuyez sur Entree pour fermer' }`""
+$s.WorkingDirectory = 'C:\Scripts'
+$s.IconLocation = "$env:SystemRoot\System32\imageres.dll,74"
+$s.Save()
+```
+
+Don't copy the script itself to the desktop: double-clicking a `.ps1` file opens it in Notepad, and `-Install` run from that copy would point the scheduled task to the desktop.
+
 | Option        | What it does                                                                                   |
 | ------------- | ---------------------------------------------------------------------------------------------- |
 | 1. Ajouter    | Asks for the first and last name, department and post, shows the account to be created, then creates it like an arrival |
