@@ -43,6 +43,11 @@ caddy_sites:
   - nom: homarr
     upstream: 10.10.20.41:7575
     reseaux: *vlans_internes
+  # Jellyfin sur media01. Les PC de projection gardent aussi l'acces direct
+  # (http://10.10.20.40:8096, dans le VLAN 20).
+  - nom: jellyfin
+    upstream: 10.10.20.40:8096
+    reseaux: *vlans_internes
   - nom: www
     upstream: 10.10.20.31:80
     reseaux: *vlans_internes
