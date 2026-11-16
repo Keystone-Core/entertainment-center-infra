@@ -158,6 +158,7 @@ Get-ADUser olivier.bouchard -Properties Description | Select-Object Enabled, Dis
 | `2`, `julie`, `1`, `Gerance`, `o` | A change of department: `retire de GG-Reception`, the groups follow |
 | `4`, `olivier`, Enter, Enter, `o` | Olivier, who left in part 6, comes back: his department and post from before are suggested, and he gets a new temporary password |
 | `5` | The list: Julie in management, Olivier back |
+| `7`, `1`, `0` | The automation's state: last run and its result, next run, frequency. The same submenu runs, enables, disables or reschedules the task |
 | `0` | Quit |
 
 ## 8. Safety (1 min)

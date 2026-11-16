@@ -18,7 +18,9 @@
        puis deplace le fichier dans Traites.
 
     Menu interactif (-Menu) : un administrateur ajoute, modifie (service, poste, nom),
-    retire, reactive ou liste les employes, ou lance l'import tout de suite. Chaque
+    retire, reactive ou liste les employes, ou lance l'import tout de suite. Le
+    sous-menu Automatisation pilote la tache planifiee : etat, lancement, activation,
+    frequence, journal, dernier rapport, modele CSV et reinstallation. Chaque
     changement est confirme avant d'etre applique et note dans Rapports\journal.log.
 
     Le script ne change jamais le mot de passe d'un compte existant (seule une
@@ -38,7 +40,8 @@
     Affiche ce qui serait fait, sans rien modifier (import et menu).
 .PARAMETER Install
     Cree les dossiers, le partage Employes$ et la tache planifiee (toutes les
-    15 minutes, compte SYSTEM).
+    15 minutes, compte SYSTEM). Refuse si le script n'est pas dans C:\Scripts.
+    Une tache existante garde sa frequence et son etat (active ou non).
 .PARAMETER Reponses
     Pour les tests : reponses du menu, dans l'ordre, au lieu du clavier.
 
@@ -89,6 +92,8 @@ $Services = @{
 $OrdreServices = @('gerance', 'accueil', 'soutien', 'polyvalent')
 $GroupeTous = 'GG-Employes'
 $CeScript = $MyInvocation.MyCommand.Path
+# La tache planifiee lance la copie de ce dossier, reserve aux administrateurs.
+$DossierScripts = 'C:\Scripts'
 
 $DirATraiter = Join-Path $Dossier 'A-traiter'
 $DirTraites  = Join-Path $Dossier 'Traites'
@@ -592,6 +597,166 @@ function Invoke-MenuImporter {
     Write-Host "Termine, $e ligne(s) en erreur. Les rapports sont dans $DirRapports." -ForegroundColor $(if ($e) { 'Yellow' } else { 'Green' })
 }
 
+# --- Sous-menu Automatisation (tache planifiee) --------------------------
+
+function Get-Tache { Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue }
+
+function Get-MinutesTache($t) {
+    $i = $t.Triggers[0].Repetition.Interval
+    if ($i) { return [int][Xml.XmlConvert]::ToTimeSpan($i).TotalMinutes }
+    return 0
+}
+
+function Get-TexteResultat([int64]$Code) {
+    switch ($Code) {
+        0 { 'OK' }
+        1 { 'au moins une ligne en erreur (voir le rapport)' }
+        2 { 'erreur du script (voir le journal)' }
+        267011 { 'jamais lancee' }
+        267009 { 'en cours' }
+        default { "code $Code" }
+    }
+}
+
+function Show-EtatTache {
+    $t = Get-Tache
+    if (-not $t) { Write-Host "La tache '$TaskName' n'existe pas : option 8 pour la recreer." -ForegroundColor Yellow; return }
+    $i = Get-ScheduledTaskInfo -TaskName $TaskName
+    $etat = switch ([string]$t.State) { 'Ready' { 'active' } 'Running' { 'active, en cours' } 'Disabled' { 'DESACTIVEE' } default { [string]$t.State } }
+    $attente = @(Get-ChildItem -LiteralPath $DirATraiter -Filter '*.csv' -File -ErrorAction SilentlyContinue).Count
+    Write-Host "  Tache              : $TaskName ($etat)"
+    Write-Host "  Frequence          : toutes les $(Get-MinutesTache $t) minutes, compte $($t.Principal.UserId)"
+    Write-Host "  Derniere execution : $(if ($i.LastRunTime.Year -gt 2000) { $i.LastRunTime.ToString('yyyy-MM-dd HH:mm') } else { 'jamais' }) ($(Get-TexteResultat $i.LastTaskResult))"
+    Write-Host "  Prochaine          : $(if ($t.State -eq 'Disabled') { 'aucune (desactivee)' } elseif ($i.NextRunTime) { $i.NextRunTime.ToString('yyyy-MM-dd HH:mm') } else { '?' })"
+    Write-Host "  Script lance       : $(($t.Actions[0].Arguments -split '"')[1])"
+    Write-Host "  Fichiers en attente dans A-traiter : $attente"
+}
+
+function Invoke-LancerTache {
+    $t = Get-Tache
+    if (-not $t) { Write-Host 'La tache n''existe pas : option 8 pour la recreer.' -ForegroundColor Yellow; return }
+    if ($t.State -eq 'Disabled') { Write-Host 'La tache est desactivee : active-la d''abord (option 3).' -ForegroundColor Yellow; return }
+    if (-not (Confirmer 'Lancer la tache maintenant')) { Write-Host 'Annule.'; return }
+    if ($Simulation) { Write-Host '(simulation) la tache n''est pas lancee.'; return }
+    $debut = Get-Date
+    Start-ScheduledTask -TaskName $TaskName
+    Write-Log "Menu ($env:USERNAME) : automatisation : tache lancee" -Silencieux
+    Start-Sleep -Seconds 2
+    $n = 0
+    while ((Get-Tache).State -eq 'Running' -and $n -lt 120) { Start-Sleep -Seconds 1; $n++ }
+    $i = Get-ScheduledTaskInfo -TaskName $TaskName
+    Write-Host "Termine : $(Get-TexteResultat $i.LastTaskResult)" -ForegroundColor $(if ($i.LastTaskResult -eq 0) { 'Green' } else { 'Yellow' })
+    $lignes = @()
+    if (Test-Path $Journal) {
+        $lignes = @(Get-Content $Journal -Encoding UTF8 | Where-Object { $_ -match '^(\S+ \S+)' -and [datetime]$Matches[1] -ge $debut.AddSeconds(-1) -and $_ -notmatch 'Menu \(' })
+    }
+    if ($lignes.Count -eq 0) { Write-Host '  Rien a traiter dans A-traiter.' } else { $lignes | ForEach-Object { Write-Host "  $_" } }
+}
+
+function Switch-Tache {
+    $t = Get-Tache
+    if (-not $t) { Write-Host 'La tache n''existe pas : option 8 pour la recreer.' -ForegroundColor Yellow; return }
+    $active = $t.State -ne 'Disabled'
+    Write-Host "La tache est $(if ($active) { 'active' } else { 'desactivee' })."
+    if ($active) {
+        Write-Host 'Desactivee, elle ne traite plus le dossier A-traiter tant qu''elle n''est pas reactivee.'
+        if (-not (Confirmer 'Desactiver la tache')) { Write-Host 'Annule.'; return }
+        if ($Simulation) { Write-Host '(simulation) rien n''est change.'; return }
+        Disable-ScheduledTask -TaskName $TaskName | Out-Null
+        Write-Log "Menu ($env:USERNAME) : automatisation : tache desactivee" -Silencieux
+    } else {
+        if (-not (Confirmer 'Activer la tache')) { Write-Host 'Annule.'; return }
+        if ($Simulation) { Write-Host '(simulation) rien n''est change.'; return }
+        Enable-ScheduledTask -TaskName $TaskName | Out-Null
+        Write-Log "Menu ($env:USERNAME) : automatisation : tache activee" -Silencieux
+    }
+    Write-Host "La tache est maintenant $(if ((Get-Tache).State -eq 'Disabled') { 'desactivee' } else { 'active' })." -ForegroundColor Green
+}
+
+function Set-FrequenceTache {
+    $t = Get-Tache
+    if (-not $t) { Write-Host 'La tache n''existe pas : option 8 pour la recreer.' -ForegroundColor Yellow; return }
+    $actuelle = Get-MinutesTache $t
+    $m = (Lire 'Nouvelle frequence en minutes, de 5 a 1440' ([string]$actuelle)) -as [int]
+    if (-not $m -or $m -lt 5 -or $m -gt 1440) { Write-Host 'Frequence invalide : entre 5 et 1440 minutes.' -ForegroundColor Yellow; return }
+    if ($m -eq $actuelle) { Write-Host 'Frequence inchangee.'; return }
+    if (-not (Confirmer "Lancer la tache toutes les $m minutes au lieu de $actuelle")) { Write-Host 'Annule.'; return }
+    if ($Simulation) { Write-Host '(simulation) rien n''est change.'; return }
+    $t.Triggers[0].Repetition.Interval = "PT${m}M"
+    Set-ScheduledTask -InputObject $t | Out-Null
+    $apres = Get-MinutesTache (Get-Tache)
+    Write-Log "Menu ($env:USERNAME) : automatisation : frequence $actuelle -> $apres minutes" -Silencieux
+    Write-Host "La tache tourne maintenant toutes les $apres minutes." -ForegroundColor Green
+}
+
+function Show-Journal {
+    if (-not (Test-Path $Journal)) { Write-Host 'Aucun journal pour l''instant.'; return }
+    Write-Host "Les 20 dernieres lignes de $Journal :"
+    Get-Content $Journal -Tail 20 -Encoding UTF8 | ForEach-Object { Write-Host "  $_" }
+}
+
+function Show-DernierRapport {
+    $r = Get-ChildItem $DirRapports -Filter 'rapport-*.html' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
+    if (-not $r) { Write-Host 'Aucun rapport pour l''instant.'; return }
+    $h = Get-Content $r.FullName -Raw -Encoding UTF8
+    $fichier = if ($h -match 'Fichier : <b>(.*?)</b>') { [Net.WebUtility]::HtmlDecode($Matches[1]) } else { '?' }
+    $resume = if ($h -match '<p>(Crees : .*?)</p>') { $Matches[1] -replace ' &middot; ', ', ' } else { '' }
+    Write-Host "$($r.Name) : fichier $fichier"
+    Write-Host "  $resume"
+    $lignes = [regex]::Matches($h, '<tr><td>(.*?)</td><td>(.*?)</td><td>(.*?)</td><td>(.*?)</td><td[^>]*>(.*?)</td><td>(.*?)</td></tr>') | ForEach-Object {
+        [pscustomobject]@{
+            Ligne = $_.Groups[1].Value; Action = [Net.WebUtility]::HtmlDecode($_.Groups[2].Value)
+            Personne = [Net.WebUtility]::HtmlDecode($_.Groups[3].Value); Compte = [Net.WebUtility]::HtmlDecode($_.Groups[4].Value)
+            Resultat = $_.Groups[5].Value; Detail = [Net.WebUtility]::HtmlDecode($_.Groups[6].Value)
+        }
+    }
+    $lignes | Format-Table -AutoSize -Wrap | Out-String -Width 160 | Write-Host
+    Write-Host "Version HTML : $($r.FullName)"
+}
+
+function New-ModeleCsv {
+    $chemin = Join-Path $Dossier 'modele-employes.csv'
+    if ((Test-Path $chemin) -and -not (Confirmer "$chemin existe deja. Le remplacer")) { Write-Host 'Annule.'; return }
+    if ($Simulation) { Write-Host "(simulation) $chemin n'est pas cree."; return }
+    # UTF-8 avec BOM : Excel l'ouvre avec les accents.
+    Set-Content -Path $chemin -Value 'Action;Prenom;Nom;Service;Poste;Compte' -Encoding UTF8
+    Write-Log "Menu ($env:USERNAME) : automatisation : modele CSV cree" -Silencieux
+    Write-Host "Modele cree : $chemin (\\$env:COMPUTERNAME\$ShareName\modele-employes.csv pour la gerance)" -ForegroundColor Green
+    Write-Host '  Une ligne par personne, par exemple :'
+    Write-Host '    Arrivee;Marie;Tremblay;Accueil;PC-REC-02;'
+    Write-Host '    Depart;Jean;Roy;;;'
+    Write-Host '  Service : Gerance, Accueil, Soutien ou Polyvalent. Enregistrer en CSV, puis deposer dans A-traiter.'
+}
+
+function Invoke-MenuAutomatisation {
+    while ($true) {
+        Write-Titre "Automatisation (tache '$TaskName')"
+        foreach ($l in '1. Etat de la tache', '2. Lancer maintenant', '3. Activer ou desactiver', '4. Changer la frequence',
+                       '5. Voir le journal', '6. Voir le dernier rapport', '7. Creer un modele CSV pour la gerance',
+                       '8. Reinstaller (dossiers, partage, droits, tache)', '0. Retour') {
+            Write-Host "  $l"
+        }
+        switch (Lire 'Choix') {
+            '1' { Show-EtatTache }
+            '2' { Invoke-LancerTache }
+            '3' { Switch-Tache }
+            '4' { Set-FrequenceTache }
+            '5' { Show-Journal }
+            '6' { Show-DernierRapport }
+            '7' { New-ModeleCsv }
+            '8' {
+                Write-Host 'Recree ce qui manque, remet les droits et reenregistre la tache, en gardant sa frequence et son etat.'
+                if (-not (Confirmer 'Reinstaller')) { Write-Host 'Annule.'; break }
+                if ($Simulation) { Write-Host '(simulation) rien n''est change.'; break }
+                Install-Import
+                Write-Log "Menu ($env:USERNAME) : automatisation : reinstallation" -Silencieux
+            }
+            '0' { return }
+            default { Write-Host 'Choix invalide.' -ForegroundColor Yellow }
+        }
+    }
+}
+
 function Start-Menu {
     # Accents corrects dans une session SSH.
     try { [Console]::OutputEncoding = [Text.Encoding]::UTF8; [Console]::InputEncoding = [Text.Encoding]::UTF8 } catch { }
@@ -600,7 +765,8 @@ function Start-Menu {
         Write-Host ''
         Write-Host "=== Employes du CDE$(if ($Simulation) { ' (simulation : rien ne sera modifie)' }) ===" -ForegroundColor Cyan
         foreach ($l in '1. Ajouter un employe', '2. Modifier un employe (service, poste, nom)', '3. Retirer un employe',
-                       '4. Reactiver un ancien employe', '5. Lister les employes', '6. Importer le dossier A-traiter maintenant', '0. Quitter') {
+                       '4. Reactiver un ancien employe', '5. Lister les employes', '6. Importer le dossier A-traiter maintenant',
+                       '7. Automatisation (tache planifiee)', '0. Quitter') {
             Write-Host "  $l"
         }
         $choix = Lire 'Choix'
@@ -612,6 +778,7 @@ function Start-Menu {
                 '4' { Invoke-MenuReactiver }
                 '5' { Invoke-MenuLister }
                 '6' { Invoke-MenuImporter }
+                '7' { Invoke-MenuAutomatisation }
                 '0' { return }
                 default { Write-Host 'Choix invalide.' -ForegroundColor Yellow }
             }
@@ -626,6 +793,10 @@ function Start-Menu {
 # --- Installation --------------------------------------------------------
 
 function Install-Import {
+    # Une copie ailleurs (sur le bureau, par exemple) ferait pointer la tache vers elle.
+    if ((Split-Path $CeScript) -ne $DossierScripts) {
+        throw "Installation refusee : lancer -Install depuis $DossierScripts\Importer-Employes.ps1, pas depuis $(Split-Path $CeScript)."
+    }
     $nb = (Get-ADDomain).NetBIOSName
     $gerance = "$nb\GG-Gerance"
     foreach ($d in $Dossier, $DirATraiter, $DirTraites, $DirRapports, $DirMdp) {
@@ -653,12 +824,17 @@ function Install-Import {
 
     $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
         -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$CeScript`" -Dossier `"$Dossier`""
-    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes 15)
+    # Une tache existante garde sa frequence et son etat (changes depuis le menu).
+    $existante = Get-Tache
+    $minutes = if ($existante -and (Get-MinutesTache $existante) -ge 5) { Get-MinutesTache $existante } else { 15 }
+    $desactivee = $existante -and $existante.State -eq 'Disabled'
+    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes $minutes)
     $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
     $reglages = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -StartWhenAvailable
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal `
         -Settings $reglages -Description 'Arrivees et departs des employes depuis \\dc01\Employes$\A-traiter (T5.4)' -Force | Out-Null
-    Write-Log "Tache planifiee '$TaskName' : toutes les 15 minutes, compte SYSTEM"
+    if ($desactivee) { Disable-ScheduledTask -TaskName $TaskName | Out-Null }
+    Write-Log "Tache planifiee '$TaskName' : toutes les $minutes minutes, compte SYSTEM$(if ($desactivee) { ', desactivee' })"
 }
 
 # --- Programme principal -------------------------------------------------
