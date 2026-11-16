@@ -17,7 +17,9 @@ One file per team member: a full demo of their part of the project, with the exp
 
 ## Reaching the infrastructure from a laptop
 
-Every demo goes through the Xray VPN and `ctrl-iac`, the control station in VLAN 10. One SSH tunnel opens the web interfaces published by `proxy01`, and the names have to point to it in the browser (in Firefox or Zen, `about:config`, `network.dns.localDomains`):
+Since November 16, 2026, the Xray VPN leads straight to the centre's VLANs (with the rights of VLAN 10) and resolves the internal names: with the VPN on (Hiddify in VPN mode, Tailscale off), open `https://<name>.divertissementestrie.ca` or `ssh dc01.cde.lan` directly, without a tunnel.
+
+Before that, every demo went through the Xray VPN and `ctrl-iac`, the control station in VLAN 10. One SSH tunnel opens the web interfaces published by `proxy01`, and the names have to point to it in the browser (in Firefox or Zen, `about:config`, `network.dns.localDomains`):
 
 ```bash
 ssh -N -L 8443:10.10.80.10:443 ctrl-iac
