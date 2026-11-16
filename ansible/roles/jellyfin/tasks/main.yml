@@ -1,0 +1,87 @@
+---
+- name: Paquets necessaires au depot
+  ansible.builtin.apt:
+    name:
+      - curl
+      - gnupg
+      - ca-certificates
+      - python3-debian
+    state: present
+
+- name: Cle du depot Jellyfin
+  ansible.builtin.get_url:
+    url: https://repo.jellyfin.org/jellyfin_team.gpg.key
+    dest: /etc/apt/keyrings/jellyfin.asc
+    mode: "0644"
+
+- name: Depot Jellyfin
+  ansible.builtin.deb822_repository:
+    name: jellyfin
+    types: deb
+    uris: https://repo.jellyfin.org/debian
+    suites: "{{ ansible_distribution_release }}"
+    components: main
+    signed_by: /etc/apt/keyrings/jellyfin.asc
+    state: present
+
+- name: Installer Jellyfin
+  ansible.builtin.apt:
+    name: jellyfin
+    state: present
+    update_cache: true
+
+- name: Systeme de fichiers du disque des medias
+  community.general.filesystem:
+    dev: "{{ jellyfin_disque_medias }}"
+    fstype: ext4
+    opts: -L medias
+  when: jellyfin_disque_medias | length > 0
+
+- name: Monter le disque des medias
+  ansible.posix.mount:
+    path: "{{ jellyfin_dossier_medias }}"
+    src: LABEL=medias
+    fstype: ext4
+    opts: defaults,nofail,discard
+    state: mounted
+  when: jellyfin_disque_medias | length > 0
+
+- name: Groupe partage avec la suite arr
+  ansible.builtin.group:
+    name: "{{ jellyfin_groupe_media }}"
+    gid: "{{ jellyfin_gid_media }}"
+
+- name: Jellyfin dans le groupe media
+  ansible.builtin.user:
+    name: jellyfin
+    groups: "{{ jellyfin_groupe_media }}"
+    append: true
+  notify: Redemarrer jellyfin
+
+- name: Dossiers des medias
+  ansible.builtin.file:
+    path: "{{ jellyfin_dossier_medias }}/{{ item }}"
+    state: directory
+    owner: root
+    group: "{{ jellyfin_groupe_media }}"
+    mode: "2775"
+  loop: "{{ [''] + jellyfin_sous_dossiers }}"
+
+- name: Appliquer les changements avant de demarrer
+  ansible.builtin.meta: flush_handlers
+
+- name: Jellyfin demarre et active
+  ansible.builtin.service:
+    name: jellyfin
+    state: started
+    enabled: true
+
+- name: Attendre que Jellyfin reponde
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ jellyfin_port }}/health"
+    return_content: true
+  register: sante
+  until: "'Healthy' in sante.content"
+  retries: 12
+  delay: 5
+  changed_when: false

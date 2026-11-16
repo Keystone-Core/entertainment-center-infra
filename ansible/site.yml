@@ -8,3 +8,8 @@
   hosts: mqtt
   roles:
     - mosquitto
+
+- name: Diffusion multimedia
+  hosts: media
+  roles:
+    - jellyfin
