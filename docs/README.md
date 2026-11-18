@@ -64,4 +64,5 @@ Techniques de l'informatique (Computer Science Technology)
 - [Homarr Dashboard](guides/homarr.md): the dashboard on `dash01`, its encryption key and the `homarr` role
 - [Email and Help Desk](guides/email-and-tickets.md): hMailServer on `mail01` and osTicket on `tick01`
 - [Veeam Backups](guides/veeam-backups.md): what is backed up, the backup job and the monitoring script
+- [Physical Switch](guides/switch.md): the Aruba switch's ports, VLAN 10 for the team's laptops, connecting a laptop and console access
 - [Proxmox Host](guides/proxmox-host.md): the host's network, storage and accounts, and which tool manages each VM
