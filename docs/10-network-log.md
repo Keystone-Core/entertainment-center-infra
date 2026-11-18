@@ -22,6 +22,7 @@ The following table records each version of the log.
 | 1.11    | November 11, 2026  | Alexy Després | The Xray VPN comes out through an Xray bridge on pve itself (10.85.2.127), not 10.85.2.124, and it relays UDP: fw01's VoIP forwarding and voip01's firewall now accept 10.85.2.127 |
 | 1.12    | November 11, 2026  | Alexy Després | LAMP development server installed on web01 (ansible/lamp.yml), reachable at http://10.10.20.21 from VLAN 20 and not published by proxy01; nightly backup of the website from ctrl-iac (T5.2) |
 | 1.13    | November 11, 2026  | Alexy Després | Netdata on the nine Linux servers: each one streams to mon01 on 19999/TCP (rules 1 and 6), which keeps the history, raises the alerts and serves the dashboard to VLANs 10 and 20 |
+| 1.16    | November 18, 2026  | Loucas Viens | The team's laptops in VLAN 10 through the managed switch (Aruba 2930F `minion`): ports 2 to 5 untagged in VLAN 10, port 12 tagged to pve's nic1 (vmbr1, VLAN 10 only); fixed addresses 10.10.10.31 to .34 |
 | 1.15    | November 16, 2026  | Loucas Viens | pve in VLAN 10 (10.10.10.10, vmbr1.10): the Xray VPN reaches the centre's VLANs with the rights of VLAN 10; the bridge resolves divertissementestrie.ca and cde.lan through fw01 |
 | 1.14    | November 16, 2026  | Loucas Viens | Jellyfin, running on media01, published by proxy01 as jellyfin.divertissementestrie.ca for VLANs 10 and 20; internal DNS records |
 
@@ -41,11 +42,11 @@ The initial plan had eight VLANs, with separate networks for the staff workstati
 
 Within VLAN 20, the addresses are divided by type of device: .10 to .99 for the servers (static addressing), .100 to .149 for the workstations and phones (DHCP reservations) and .150 to .199 for the dynamic DHCP pool.
 
-**Implementation status (version 1.15).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
+**Implementation status (version 1.16).** The five VLANs exist on fw01, as VLAN interfaces on its LAN port (vtnet1): VLAN 20 is untagged, VLANs 10, 40, 60 and 80 are tagged. The Proxmox bridge behind them (vmbr1) is VLAN-aware, and each VM's network card carries the tag of its VLAN. The lab setup still differs from the plan on the following points:
 
 - **pve01** keeps its address on the cégep network (10.85.2.127, bridge vmbr0) and, since version 1.15, also has 10.10.10.10 in VLAN 10 (vmbr1.10), with a route to 10.10.0.0/16 through fw01. It doesn't forward traffic between the two networks. fw01's WAN interface is also on that network and gets its address by DHCP (10.85.2.16 at the time of writing).
 - **The control station** is the container ctrl-iac (LXC 110), at 10.10.10.20 in VLAN 10 as planned. It uses fw01 (10.10.10.1) as DNS server, which also resolves the cde.lan domain. Since pve01 is on the cégep network, it reaches the Proxmox API through fw01 (section 10.3, GESTION).
-- **vmbr1 has one physical port, nic0**, with the reception's IP phone (TEL-02, Cisco SPA303) plugged in directly; no switch is connected yet, and the other VLANs only carry VMs. TEL-02 has a fixed address (10.10.20.122) instead of a DHCP reservation.
+- **vmbr1 has two physical ports.** nic0 has the reception's IP phone (TEL-02, Cisco SPA303) plugged in directly. nic1 goes to port 12 of the managed switch (Aruba 2930F, named `minion`), and only carries VLAN 10, tagged: the switch's ports 2 to 5 put the team's laptops in VLAN 10 (fixed addresses 10.10.10.31 to .34). The switch's other ports stay on the cégep network (VLAN 1), including port 1 (the cégep) and port 11 (pve's nic3); the other VLANs only carry VMs ([switch guide](guides/switch.md)). TEL-02 has a fixed address (10.10.20.122) instead of a DHCP reservation.
 - **Staff workstations** are Windows 11 VMs on pve01, in VLAN 20 (untagged on vmbr1), created by [`windows/creer-postes.sh`](../windows/creer-postes.sh) and joined to the `cde.lan` domain. Their MAC addresses are the ones to use for the DHCP reservations once dc01's VLAN 20 scope covers .101 to .104; until then they get an address from the current pool.
 
   | Workstation | VM    | Account   | MAC address         | Current address |
@@ -77,7 +78,7 @@ The addresses in the reserved range are assigned by DHCP reservation tied to the
 
 | Name    | Role                                               | Type     | System           | VLAN | IP address  | Owner        |
 | ------- | -------------------------------------------------- | -------- | ---------------- | ---- | ----------- | ------------ |
-| sw01    | Managed core switch                                | Hardware | —                | 10   | 10.10.10.2  | L. Viens     |
+| sw01    | Managed core switch (Aruba 2930F, named `minion`; managed by console, address by DHCP on the cégep network for now) | Hardware | —                | 10   | 10.10.10.2  | L. Viens     |
 | pve01   | Proxmox VE virtualization host                     | Server   | Proxmox (Debian) | 10   | 10.10.10.10 | N.-A. Anillo |
 | fw01    | pfSense (or OPNsense) firewall and router          | VM       | FreeBSD          | 10   | 10.10.10.1  | L. Viens     |
 | ctl01   | Terraform and Ansible control station              | LXC      | Debian           | 10   | 10.10.10.20 | N.-A. Anillo |

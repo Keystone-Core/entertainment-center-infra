@@ -13,11 +13,11 @@
 | Bridge  | Port             | Use                                                                 |
 | ------- | ---------------- | ------------------------------------------------------------------- |
 | `vmbr0` | `nic3`           | Cégep network: the host itself and the WAN of `fw01`                |
-| `vmbr1` | `nic0`           | The centre's VLANs, VLAN-aware. VLAN 20 is untagged. `nic0` has the reception's IP phone (TEL-02) plugged in directly |
+| `vmbr1` | `nic0`, `nic1`   | The centre's VLANs, VLAN-aware. VLAN 20 is untagged. `nic0` has the reception's IP phone (TEL-02) plugged in directly; `nic1` goes to port 12 of the [switch](switch.md) and only carries VLAN 10, tagged (`bridge-vids 10`, `bridge-allow-untagged no`) |
 
 `pve` itself is in VLAN 10 through `vmbr1.10` (`10.10.10.10/24`), with a route to `10.10.0.0/16` through fw01 (`10.10.10.1`); its default route stays on the cégep network. `pve` doesn't forward traffic between networks (`net.ipv4.ip_forward = 0`): keep it that way, or the cégep network could reach VLAN 10 without going through fw01. The interface was added without `ifreload -a`, whose dry run restarted `vmbr0` too; a copy of the file from before is in `/root/interfaces.avant-vlan10`.
 
-`nic1`, `nic2` and `nic4` to `nic7` are free. **Never connect `vmbr1` to the cégep network**: it would bypass the firewall, and `dc01` would serve DHCP to the cégep's machines.
+`nic2` and `nic4` to `nic7` are free. `nic3` (`vmbr0`) also goes through the switch, on its port 11. The file from before `nic1` was added is in `/root/interfaces.avant-nic1`. **Never connect `vmbr1` to the cégep network**: it would bypass the firewall, and `dc01` would serve DHCP to the cégep's machines.
 
 ## Xray Bridge
 
