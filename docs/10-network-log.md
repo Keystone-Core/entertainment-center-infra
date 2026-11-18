@@ -22,7 +22,7 @@ The following table records each version of the log.
 | 1.11    | November 11, 2026  | Alexy Després | The Xray VPN comes out through an Xray bridge on pve itself (10.85.2.127), not 10.85.2.124, and it relays UDP: fw01's VoIP forwarding and voip01's firewall now accept 10.85.2.127 |
 | 1.12    | November 11, 2026  | Alexy Després | LAMP development server installed on web01 (ansible/lamp.yml), reachable at http://10.10.20.21 from VLAN 20 and not published by proxy01; nightly backup of the website from ctrl-iac (T5.2) |
 | 1.13    | November 11, 2026  | Alexy Després | Netdata on the nine Linux servers: each one streams to mon01 on 19999/TCP (rules 1 and 6), which keeps the history, raises the alerts and serves the dashboard to VLANs 10 and 20 |
-| 1.16    | November 18, 2026  | Loucas Viens | The team's laptops in VLAN 10 through the managed switch (Aruba 2930F `minion`): ports 2 to 5 untagged in VLAN 10, port 12 tagged to pve's nic1 (vmbr1, VLAN 10 only); fixed addresses 10.10.10.31 to .34 |
+| 1.16    | November 18, 2026  | Loucas Viens | The team's laptops in VLAN 10 through the managed switch (Aruba 2930F `minion`): ports 2 to 5 untagged in VLAN 10, port 12 tagged to pve's nic1 (vmbr1, VLAN 10 only); DHCP reservations on dc01 (10.10.10.31 to .34), relayed by fw01 |
 | 1.15    | November 16, 2026  | Loucas Viens | pve in VLAN 10 (10.10.10.10, vmbr1.10): the Xray VPN reaches the centre's VLANs with the rights of VLAN 10; the bridge resolves divertissementestrie.ca and cde.lan through fw01 |
 | 1.14    | November 16, 2026  | Loucas Viens | Jellyfin, running on media01, published by proxy01 as jellyfin.divertissementestrie.ca for VLANs 10 and 20; internal DNS records |
 
@@ -34,7 +34,7 @@ The initial plan had eight VLANs, with separate networks for the staff workstati
 
 | VLAN | Name                 | Network       | Gateway    | Reserved range | DHCP range   | Use                                                         |
 | ---- | -------------------- | ------------- | ---------- | -------------- | ------------ | ----------------------------------------------------------- |
-| 10   | Management           | 10.10.10.0/24 | 10.10.10.1 | .2 to .99      | None         | Administration (Proxmox, switch, control station)           |
+| 10   | Management           | 10.10.10.0/24 | 10.10.10.1 | .2 to .99      | Reservations .31 to .34 | Administration (Proxmox, switch, control station, the team's laptops) |
 | 20   | Internal             | 10.10.20.0/24 | 10.10.20.1 | .10 to .149    | .150 to .199 | Internal servers, staff and room workstations, IP phones    |
 | 40   | Public workstations  | 10.10.40.0/24 | 10.10.40.1 | .11 to .22     | .100 to .199 | Twelve self-service workstations                            |
 | 60   | Connected devices    | 10.10.60.0/24 | 10.10.60.1 | .10 to .99     | None         | MQTT broker and ESP32 modules                               |
@@ -55,11 +55,12 @@ Within VLAN 20, the addresses are divided by type of device: .10 to .99 for the 
   | PC-REC-01   | 20102 | `nicolas` | BC:24:11:E9:93:4C   | 10.10.20.203    |
   | PC-SUP-01   | 20103 | `joshua`  | BC:24:11:0F:58:C3   | 10.10.20.204    |
   | PC-DEV-01   | 20104 | `alexy`   | BC:24:11:5D:57:D1   | 10.10.20.205    |
-- **DHCP:** fw01's DHCP servers (IPv4 and IPv6) are disabled; dc01 serves DHCP, authorized in Active Directory. VLAN 20 is served directly and VLAN 40 through fw01's DHCP relay. dc01's scopes still follow the eight-VLAN plan:
+- **DHCP:** fw01's DHCP servers (IPv4 and IPv6) are disabled; dc01 serves DHCP, authorized in Active Directory. VLAN 20 is served directly, VLANs 40 and 10 through fw01's DHCP relay. VLAN 10 only has reservations, for the team's laptops (since v1.16). dc01's scopes still follow the eight-VLAN plan:
 
   | Scope        | Name              | Range                      | Exclusions                  | Router, DNS                | Status                         |
   | ------------ | ----------------- | -------------------------- | --------------------------- | -------------------------- | ------------------------------ |
   | 10.10.20.0   | Others            | .200 to .220               | .200 (Xray VPN)             | 10.10.20.1, 10.10.20.10    | In use; differs from the plan (.150 to .199). Reservation: mail01 at .201 |
+  | 10.10.10.0   | VLAN10-Gestion    | .31 to .34                 | Every address without a reservation | 10.10.10.1, 10.10.10.1 | Reservations only: Loucas .31, Nicolas .32 ([switch guide](guides/switch.md#connecting-a-laptop)) |
   | 10.10.40.0   | VLAN40-Publics    | .11 to .199                | .11 to .99                  | 10.10.40.1, 10.10.40.1     | In use, as planned             |
   | 10.10.30.0, 10.10.50.0, 10.10.70.0 | VLAN30, 50, 70 | — | — | — | Unused since v1.1 (VLANs merged into VLAN 20) |
 
@@ -241,7 +242,7 @@ The rules use the following aliases:
 | Block and log | VLAN 40 | `PRIVES`    | All                  | Rule 14, also blocks the cégep network |
 | Allow         | VLAN 40 | Any         | TCP `WEB`            | Rule 8      |
 
-DHCP relay: fw01 relays the DHCP requests of VLAN 40 to dc01 (10.10.20.10); pfSense allows the relayed traffic on its own.
+DHCP relay: fw01 relays the DHCP requests of VLAN 40, and of VLAN 10 since v1.16, to dc01 (10.10.20.10); pfSense allows the relayed traffic on its own.
 
 **OPT3 — VLAN 60 (connected devices)**
 

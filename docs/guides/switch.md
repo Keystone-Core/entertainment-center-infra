@@ -40,25 +40,31 @@ vlan 10
 
 ## Connecting a Laptop
 
-1. Plug the laptop into port 2, 3, 4 or 5.
-2. Give its Ethernet card a fixed address, in a **Terminal (administrator)** (one address per person):
+Each laptop's Ethernet card has a DHCP reservation in VLAN 10, on `dc01` (scope `VLAN10-Gestion`), and `fw01` relays the requests of VLAN 10 to `dc01`. The card stays in automatic mode everywhere: at home it gets an address from the home router, and on the switch it gets its reserved address, with `fw01` (`10.10.10.1`) as gateway and DNS server and `cde.lan` as DNS suffix.
 
-   ```powershell
-   New-NetIPAddress -InterfaceAlias Ethernet -IPAddress 10.10.10.31 -PrefixLength 24 -DefaultGateway 10.10.10.1; Set-DnsClientServerAddress -InterfaceAlias Ethernet -ServerAddresses 10.10.10.1
-   ```
+| Person  | Address       | Ethernet card (MAC)  |
+| ------- | ------------- | -------------------- |
+| Loucas  | `10.10.10.31` | `E8-CF-83-06-37-20`  |
+| Nicolas | `10.10.10.32` | `3C-18-A0-D5-7A-A0`  |
+| Joshua  | `10.10.10.33` | Not reserved yet     |
+| Alexy   | `10.10.10.34` | Not reserved yet     |
 
-   | Person  | Address       |
-   | ------- | ------------- |
-   | Loucas  | `10.10.10.31` |
-   | Nicolas | `10.10.10.32` |
-   | Joshua  | `10.10.10.33` |
-   | Alexy   | `10.10.10.34` |
+The scope only covers `.31` to `.34`, and the addresses without a reservation are excluded: an unknown computer plugged into ports 2 to 5 gets no address.
 
-3. **Quit Hiddify** (and Tailscale) while plugged in: the VPN would take over the traffic and the DNS.
+1. Plug the laptop into port 2, 3, 4 or 5. Its Ethernet card must be in automatic mode (DHCP), which is Windows' default.
+2. **Quit Hiddify** (and Tailscale) while plugged in: the VPN would take over the traffic and the DNS.
+
+To reserve a new laptop, get the MAC address of its Ethernet card (`(Get-NetAdapter -Name Ethernet).MacAddress`), then on `dc01`, for Joshua for example:
+
+```powershell
+Remove-DhcpServerv4ExclusionRange -ScopeId 10.10.10.0 -StartRange 10.10.10.33 -EndRange 10.10.10.34
+Add-DhcpServerv4ExclusionRange -ScopeId 10.10.10.0 -StartRange 10.10.10.34 -EndRange 10.10.10.34
+Add-DhcpServerv4Reservation -ScopeId 10.10.10.0 -IPAddress 10.10.10.33 -ClientId '<MAC>' -Name 'portable-joshua'
+```
+
+A laptop that was given a fixed address before goes back to automatic mode with (in a **Terminal (administrator)**): `Remove-NetIPAddress -InterfaceAlias Ethernet -AddressFamily IPv4 -Confirm:$false; Remove-NetRoute -InterfaceAlias Ethernet -DestinationPrefix 0.0.0.0/0 -Confirm:$false; Set-NetIPInterface -InterfaceAlias Ethernet -Dhcp Enabled; Set-DnsClientServerAddress -InterfaceAlias Ethernet -ResetServerAddresses; ipconfig /renew Ethernet`.
 
 The laptop then has the rights of VLAN 10: SSH, HTTPS, RDP and Proxmox towards every VLAN, `https://<name>.divertissementestrie.ca`, the `cde.lan` names through `fw01`, and the web (80 and 443) towards the Internet through `fw01`. `pve` itself answers on `10.10.10.10`.
-
-To go back to the cégep network or the Wi-Fi only, unplug the cable, or remove the address: `Remove-NetIPAddress -InterfaceAlias Ethernet -IPAddress 10.10.10.31 -Confirm:$false; Remove-NetRoute -InterfaceAlias Ethernet -DestinationPrefix 0.0.0.0/0 -Confirm:$false; Set-DnsClientServerAddress -InterfaceAlias Ethernet -ResetServerAddresses`.
 
 ## Console Access
 
