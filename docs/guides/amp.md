@@ -18,7 +18,7 @@ The role runs CubeCoders' official installer (`getamp.sh`) without any prompt (`
 
 - `getamp.sh` has no published version, so the role checks it against a SHA-256 checksum (`amp_installer_sha256`). If CubeCoders changes the script, the role stops: read the new script (`bash getamp.sh display` prints it), then update the checksum.
 - The role only installs when `/home/amp/.ampdata/instances/ADS01` doesn't exist. Running it again changes nothing.
-- The `admin` password is generated on `ctrl-iac` (`/root/.cde-secrets/game01/amp-admin`) and only used at the first installation. It was changed in the panel afterwards, so that file no longer matches.
+- The `admin` password is generated on `ctrl-iac` (`/root/.cde-secrets/game01/amp-admin`) and only used at the first installation. Change it in the panel after the first login (account menu, **Change Password**); that file then no longer matches, which doesn't matter to the role.
 
 ```bash
 cd /root/entertainment-center-infra/ansible
