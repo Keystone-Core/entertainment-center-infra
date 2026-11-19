@@ -54,3 +54,9 @@ caddy_sites:
   - nom: phpmyadmin
     upstream: 10.10.20.31:80
     reseaux: *vlans_internes
+
+  # Panneau AMP sur game01, dans la DMZ comme proxy01 : aucun pare-feu entre
+  # les deux.
+  - nom: amp
+    upstream: 10.10.80.20:8080
+    reseaux: *vlans_internes
