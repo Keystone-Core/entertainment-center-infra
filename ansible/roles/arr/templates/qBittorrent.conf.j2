@@ -1,0 +1,20 @@
+[BitTorrent]
+Session\DefaultSavePath={{ arr_telechargements }}
+Session\TempPathEnabled=false
+
+[LegalNotice]
+Accepted=true
+
+[Preferences]
+General\Locale=fr
+WebUI\Address=*
+WebUI\Port={{ arr_qbittorrent_port }}
+WebUI\Username={{ arr_admin }}
+WebUI\Password_PBKDF2="{{ arr_qbt_empreinte.stdout }}"
+WebUI\LocalHostAuth=true
+WebUI\CSRFProtection=true
+WebUI\ClickjackingProtection=true
+WebUI\HostHeaderValidation=true
+WebUI\ServerDomains=*
+WebUI\ReverseProxySupportEnabled=true
+WebUI\TrustedReverseProxiesList={{ arr_proxy }}

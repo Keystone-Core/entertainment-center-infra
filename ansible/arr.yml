@@ -1,0 +1,7 @@
+---
+# Lancer a part : ansible-playbook arr.yml
+# Le role base doit etre passe avant (site.yml).
+- name: Suite *arr et qBittorrent
+  hosts: media01
+  roles:
+    - arr

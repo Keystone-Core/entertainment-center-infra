@@ -1,0 +1,87 @@
+---
+# Une application Servarr (Sonarr, Radarr ou Prowlarr), dans la variable app.
+
+- name: "{{ app.titre }} : utilisateur systeme"
+  ansible.builtin.user:
+    name: "{{ app.nom }}"
+    system: true
+    group: "{{ arr_groupe_media }}"
+    home: "/var/lib/{{ app.nom }}"
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: "{{ app.titre }} : dossier des donnees"
+  ansible.builtin.file:
+    path: "/var/lib/{{ app.nom }}"
+    state: directory
+    owner: "{{ app.nom }}"
+    group: "{{ arr_groupe_media }}"
+    mode: "0750"
+
+- name: "{{ app.titre }} : verifier s'il est installe"
+  ansible.builtin.stat:
+    path: "/opt/{{ app.titre }}/{{ app.titre }}"
+  register: arr_binaire
+
+# Installe une seule fois. Ensuite, l'application se met a jour elle-meme
+# (Systeme > Mises a jour) : /opt/<Application> appartient a son utilisateur.
+- name: "{{ app.titre }} : installer"
+  when: not arr_binaire.stat.exists
+  block:
+    - name: "{{ app.titre }} : archive officielle (verifiee par empreinte)"
+      ansible.builtin.get_url:
+        url: "{{ app.url }}"
+        dest: "/tmp/{{ app.nom }}.tar.gz"
+        checksum: "sha256:{{ app.sha256 }}"
+        mode: "0644"
+
+    - name: "{{ app.titre }} : extraire dans /opt"
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ app.nom }}.tar.gz"
+        dest: /opt
+        remote_src: true
+        owner: "{{ app.nom }}"
+        group: "{{ arr_groupe_media }}"
+
+  always:
+    - name: "{{ app.titre }} : retirer l'archive"
+      ansible.builtin.file:
+        path: "/tmp/{{ app.nom }}.tar.gz"
+        state: absent
+
+# Valeurs de depart seulement (force: false) : l'application reecrit ce
+# fichier. La cle d'API vient de ctrl-iac ; le compte admin est cree par
+# liens.yml.
+- name: "{{ app.titre }} : configuration de depart"
+  ansible.builtin.template:
+    src: config.xml.j2
+    dest: "/var/lib/{{ app.nom }}/config.xml"
+    owner: "{{ app.nom }}"
+    group: "{{ arr_groupe_media }}"
+    mode: "0600"
+    force: false
+  no_log: true
+
+- name: "{{ app.titre }} : service systemd"
+  ansible.builtin.template:
+    src: servarr.service.j2
+    dest: "/etc/systemd/system/{{ app.nom }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  register: arr_unite
+
+- name: "{{ app.titre }} : actif au demarrage"
+  ansible.builtin.systemd_service:
+    name: "{{ app.nom }}"
+    state: "{{ 'restarted' if arr_unite.changed else 'started' }}"
+    enabled: true
+    daemon_reload: "{{ arr_unite.changed }}"
+
+- name: "{{ app.titre }} : attendre l'API"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ app.port }}/ping"
+  register: arr_ping
+  until: arr_ping.status == 200
+  retries: 30
+  delay: 4
