@@ -1,0 +1,7 @@
+---
+# Lancer a part : ansible-playbook amp.yml
+# Le role base doit etre passe avant (site.yml).
+- name: Panneau de serveurs de jeux (AMP)
+  hosts: game01
+  roles:
+    - amp

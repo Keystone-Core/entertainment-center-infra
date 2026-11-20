@@ -1,0 +1,71 @@
+---
+# AMP (CubeCoders) sur game01, avec son instance de gestion ADS01. La licence
+# s'active dans l'interface web a la premiere connexion, et les serveurs de
+# jeux (Minecraft) s'y creent : voir docs/guides/amp.md.
+
+- name: Mot de passe de l'administrateur AMP (genere sur ctrl-iac)
+  ansible.builtin.set_fact:
+    amp_mdp_admin: "{{ lookup('ansible.builtin.password', amp_secrets ~ '/amp-admin length=24 chars=ascii_letters,digits') }}"
+  no_log: true
+
+- name: Verifier si AMP est deja installe
+  ansible.builtin.stat:
+    path: /home/amp/.ampdata/instances/ADS01
+  register: amp_ads
+
+- name: Installer AMP
+  when: not amp_ads.stat.exists
+  block:
+    - name: Script d'installation officiel (verifie par empreinte)
+      ansible.builtin.get_url:
+        url: "{{ amp_installer_url }}"
+        dest: /root/getamp.sh
+        checksum: "sha256:{{ amp_installer_sha256 }}"
+        mode: "0700"
+
+    # Sans questions (USE_ANSWERS) : le script ajoute le depot de CubeCoders,
+    # installe ampinstmgr et Java, cree l'utilisateur systeme amp, puis
+    # l'instance ADS01 avec ce compte administrateur.
+    - name: Installer AMP et l'instance de gestion ADS01
+      ansible.builtin.command: bash /root/getamp.sh
+      environment: "{{ amp_answers | combine({'ANSWER_AMPUSER': amp_admin, 'ANSWER_AMPPASS': amp_mdp_admin, 'AMP_ADS_IP': amp_ads_ip, 'AMP_ADS_PORT': amp_ads_port | string}) }}"
+      args:
+        creates: /home/amp/.ampdata/instances/ADS01
+      no_log: true
+
+  rescue:
+    # La sortie est masquee (mot de passe) : le journal du script dit pourquoi.
+    - name: Fin du journal de l'installation
+      ansible.builtin.shell: tail -n 30 "$(ls -t /root/getamp-*.log | head -1)" | grep -viE 'pass|password'
+      register: amp_journal
+      changed_when: false
+      failed_when: false
+
+    - name: Echec de l'installation
+      ansible.builtin.fail:
+        msg: "L'installation d'AMP a echoue. Fin du journal :\n{{ amp_journal.stdout }}"
+
+  always:
+    - name: Retirer le script d'installation
+      ansible.builtin.file:
+        path: /root/getamp.sh
+        state: absent
+
+- name: Service AMP actif au demarrage
+  ansible.builtin.service:
+    name: ampinstmgr
+    enabled: true
+
+- name: Attendre l'interface web d'ADS01
+  ansible.builtin.wait_for:
+    port: "{{ amp_ads_port }}"
+    timeout: 180
+
+- name: Verifier l'interface web
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ amp_ads_port }}/"
+    status_code: [200, 302]
+  register: amp_web
+  retries: 10
+  delay: 6
+  until: amp_web is succeeded

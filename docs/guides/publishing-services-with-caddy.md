@@ -88,6 +88,7 @@ Every site is open to VLANs 10 and 20 only.
 | `https://osticket.divertissementestrie.ca`   | osTicket      | `10.10.20.12:80`                         | Rule 4                                          |
 | `https://homarr.divertissementestrie.ca`     | Homarr        | `10.10.20.41:7575`                       | Rule 4                                          |
 | `https://jellyfin.divertissementestrie.ca`   | Jellyfin      | `10.10.20.40:8096`                       | Rule 4                                          |
+| `https://amp.divertissementestrie.ca`        | AMP           | `10.10.80.20:8080`                       | None: same VLAN as `proxy01`                    |
 | `https://www.divertissementestrie.ca`        | Website       | `10.10.20.31:80` (Traefik)               | Rule 4                                          |
 | `https://phpmyadmin.divertissementestrie.ca` | phpMyAdmin    | `10.10.20.31:80` (Traefik)               | Rule 4                                          |
 
