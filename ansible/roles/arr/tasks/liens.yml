@@ -1,0 +1,29 @@
+---
+# Relie la suite par les API (files/relier-arr.py) : compte admin, dossiers
+# des films et des series, qBittorrent comme client de telechargement,
+# Sonarr et Radarr dans Prowlarr. Ne fait que ce qui manque.
+
+- name: Relier la suite par les API
+  ansible.builtin.script:
+    cmd: relier-arr.py
+    executable: /usr/bin/python3
+  environment:
+    ARR_ADMIN: "{{ arr_admin }}"
+    ARR_MDP: "{{ arr_mdp_admin }}"
+    QBT_PORT: "{{ arr_qbittorrent_port | string }}"
+    ARR_APPS: "{{ arr_applications | to_json }}"
+    ARR_CLES: "{{ arr_cles | to_json }}"
+  register: arr_liens
+  changed_when: "'CHANGE' in arr_liens.stdout"
+  failed_when: false
+  no_log: true
+
+# Le script n'affiche jamais de secret : ses messages peuvent etre montres.
+- name: Resultat des liens
+  ansible.builtin.debug:
+    msg: "{{ (arr_liens.stdout_lines | default([])) + (arr_liens.stderr_lines | default([])) }}"
+
+- name: Arreter si un lien a echoue
+  ansible.builtin.fail:
+    msg: La suite n'a pas pu etre reliee entierement (messages ci-dessus).
+  when: arr_liens.rc | default(1) != 0

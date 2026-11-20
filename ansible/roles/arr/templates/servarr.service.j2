@@ -1,0 +1,19 @@
+# {{ ansible_managed }}
+[Unit]
+Description={{ app.titre }}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ app.nom }}
+Group={{ arr_groupe_media }}
+# Fichiers lisibles et modifiables par le groupe media (Jellyfin, qBittorrent).
+UMask=0002
+Type=simple
+ExecStart=/opt/{{ app.titre }}/{{ app.titre }} -nobrowser -data=/var/lib/{{ app.nom }}/
+TimeoutStopSec=20
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
