@@ -1,0 +1,10 @@
+---
+jellyfin_port: 8096
+jellyfin_groupe_media: media
+jellyfin_gid_media: 2000
+jellyfin_dossier_medias: /srv/media
+jellyfin_sous_dossiers:
+  - films
+  - series
+# Disque dedie aux medias ; mettre "" s'il n'y en a pas
+jellyfin_disque_medias: /dev/sdb
