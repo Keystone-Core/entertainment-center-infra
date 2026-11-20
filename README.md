@@ -11,7 +11,7 @@ The centre has four employees and a single site, so the infrastructure has to st
 - **One physical server, everything virtualized.** A single Proxmox VE host runs every service as a VM, including the firewall. The only exception is the Terraform control station, which lives in an LXC container.
 - **Infrastructure as code.** Terraform provisions the VMs, and Ansible configures them. Both run from a dedicated control station (`ctl01`).
 - **Five segmented VLANs** behind a pfSense/OPNsense firewall with a default-deny policy. The public workstations are fully isolated from the internal network.
-- **Secure remote access** planned through an Xray VPN, published on a single port of the firewall. Web interfaces are published over HTTPS by a Caddy reverse proxy.
+- **Secure remote access** through an Xray VPN: a bridge on the Proxmox host opens an outgoing tunnel to an Xray server outside the centre, so no incoming port is needed at the cégep. Web interfaces are published over HTTPS by a Caddy reverse proxy.
 - **Linux or Windows per service.** Windows Server handles the directory, email and backups. Debian handles everything else.
 - **Connected devices.** Each team member builds an ESP32 module that talks to a Mosquitto MQTT broker.
 
@@ -21,8 +21,10 @@ The centre has four employees and a single site, so the infrastructure has to st
 flowchart TB
     internet((Internet))
     admins[Remote admins]
+    portal[Xray server<br>outside the centre]
 
     subgraph pve01["pve01 — Proxmox VE host"]
+        bridge[xray-bridge<br>on the host]
         fw01["fw01<br>pfSense / OPNsense"]
         subgraph mgmt["VLAN 10 · Management"]
             ctl01[ctl01<br>Terraform + Ansible]
@@ -30,7 +32,6 @@ flowchart TB
         subgraph srv["VLAN 20 · Internal"]
             win["dc01 · mail01 · bkp01<br>(Windows Server)"]
             lin["tick01 · voip01 · web01 · mon01<br>k3s01 · media01 · dash01 (Debian)"]
-            vpn[Xray VPN, not deployed yet<br>10.10.20.200]
         end
         subgraph iot["VLAN 60 · Connected devices"]
             mqtt01[mqtt01<br>Mosquitto]
@@ -50,8 +51,9 @@ flowchart TB
     end
 
     internet <--> fw01
-    admins -. "VPN (TCP 443)" .-> fw01
-    fw01 -. port forwarding .-> vpn
+    admins -. VPN .-> portal
+    bridge -. "outgoing tunnel (TCP 443)" .-> portal
+    bridge -- "VLAN 10" --- fw01
     fw01 --- mgmt & srv & iot & dmz
     fw01 --- lan
 ```
@@ -77,7 +79,7 @@ The internal network uses `10.10.0.0/16`. Each VLAN gets its own `/24` whose thi
 | `fw01`    | pfSense/OPNsense firewall and router           | VM       | FreeBSD        | 10   | `10.10.10.1`  |
 | `ctl01`   | Terraform and Ansible control station          | LXC      | Debian         | 10   | `10.10.10.20` |
 | `dc01`    | Active Directory, DNS, DHCP                    | VM       | Windows Server | 20   | `10.10.20.10` |
-| —         | Xray VPN server (not deployed yet)             | —        | —              | 20   | `10.10.20.200` |
+| —         | Xray VPN server (planned; the VPN uses the bridge on `pve01` for now) | — | — | 20 | `10.10.20.200` |
 | `mail01`  | hMailServer email                              | VM       | Windows Server | 20   | `10.10.20.201` |
 | `tick01`  | osTicket help desk                             | VM       | Debian         | 20   | `10.10.20.12` |
 | `bkp01`   | Veeam Backup & Replication                     | VM       | Windows Server | 20   | `10.10.20.13` |
@@ -101,7 +103,7 @@ Microsoft Defender Antivirus, managed by a domain GPO, protects the staff workst
 - **Connected devices** (VLAN 60) can't reach the Internet or other VLANs, except for the Netdata agents reporting to `mon01`. MQTT runs on port 1883 for now; TLS on 8883 is still to be done.
 - **Service web interfaces** are published over HTTPS by `proxy01`, and Caddy manages the certificates. The projection PCs can also reach Jellyfin directly inside VLAN 20. The administration interfaces (Proxmox, pfSense, FreePBX, Veeam, phpMyAdmin) are published for VLANs 10 and 20 only.
 - **Linux servers** accept SSH keys only. Their `root` and `ansible` accounts share one password, which works only on the Proxmox console.
-- **Remote administration** is planned through the Xray VPN server (`10.10.20.200`), which isn't deployed yet. The firewall forwards TCP 443 on its WAN address to it, and nothing else of the internal network is published.
+- **Remote administration** goes through the Xray VPN. A bridge on the Proxmox host ([`proxmox/xray-bridge`](proxmox/xray-bridge/)) opens an outgoing tunnel to an Xray server outside the centre. With the VPN on, a laptop reaches the centre's VLANs with the rights of VLAN 10 and resolves the internal names. The planned VPN server (`10.10.20.200`) isn't deployed; the firewall already forwards TCP 443 on its WAN address to it, and nothing else of the internal network is published.
 - **Internet-facing services** (VPN, email and game instances) use port forwarding and dynamic DNS on the firewall's WAN address.
 
 The [network log](docs/10-network-log.md) lists every port, the 16 rules of the firewall policy and the configuration as built.
@@ -136,18 +138,18 @@ The project is in the **implementation phase**, which runs from week 6 to week 1
 
 The critical path is infrastructure, then security, then services, then the media stack/Homarr/AMP, then testing: 10 weeks with no slack.
 
-### Status (November 11, 2026)
+### Status (November 20, 2026)
 
 | Work package          | State                                                                                       |
 | --------------------- | ------------------------------------------------------------------------------------------- |
-| Base infrastructure   | Done: Proxmox, VLANs, Terraform, Ansible and k3s                                            |
-| Security              | Firewall, rules and Caddy in service. The Xray VPN isn't deployed yet                       |
+| Base infrastructure   | Done: Proxmox, VLANs, Terraform, Ansible and k3s. The team's laptops join VLAN 10 through the managed switch |
+| Security              | Firewall, rules, Caddy and the Xray VPN in service. The VPN leads to the centre's VLANs with the rights of VLAN 10 |
 | Linux services        | FreePBX, the centre's website on k3s, the development server on web01 and Netdata in service |
 | Windows services      | Active Directory, DNS, DHCP, hMailServer, Veeam and Defender in service; osTicket runs on Debian |
 | MQTT and ESP32        | Broker in service without TLS. No module connected yet                                      |
 | Automation scripts    | Veeam monitoring (T5.3), the website backup (T5.2) and the employee import (T5.4) in service. T5.1 isn't in the repository yet |
 | Media, Homarr and AMP | Homarr, Jellyfin, the \*arr suite with qBittorrent, and AMP in service. No indexer configured (team decision) and no game server for now (the cégep's DNS filter blocks Minecraft)                      |
-| Testing               | To come, weeks 14 and 15                                                                    |
+| Testing               | Weeks 14 and 15, from November 23                                                           |
 
 ## Documentation
 
