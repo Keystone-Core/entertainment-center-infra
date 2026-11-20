@@ -1,0 +1,57 @@
+---
+# Sonarr, Radarr, Prowlarr et qBittorrent sur media01, relies entre eux par
+# leurs API. Aucune source (indexeur) n'est configuree : voir
+# docs/guides/arr.md.
+
+- name: Mot de passe du compte admin (genere sur ctrl-iac)
+  ansible.builtin.set_fact:
+    arr_mdp_admin: "{{ lookup('ansible.builtin.password', arr_secrets ~ '/arr-admin length=24 chars=ascii_letters,digits') }}"
+  no_log: true
+
+- name: Cles d'API (generees sur ctrl-iac)
+  ansible.builtin.set_fact:
+    arr_cles: "{{ arr_cles | default({}) | combine({item.nom: lookup('ansible.builtin.password', arr_secrets ~ '/' ~ item.nom ~ '-api length=32 chars=0123456789abcdef')}) }}"
+  loop: "{{ arr_applications }}"
+  loop_control:
+    label: "{{ item.nom }}"
+  no_log: true
+
+- name: Paquets necessaires
+  ansible.builtin.apt:
+    name:
+      - curl
+      - sqlite3
+      - python3
+      - qbittorrent-nox
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# Le role jellyfin cree aussi ce groupe, avec le meme numero.
+- name: Groupe partage avec Jellyfin
+  ansible.builtin.group:
+    name: "{{ arr_groupe_media }}"
+    gid: "{{ arr_gid_media }}"
+
+# Meme disque que les films et les series : Sonarr et Radarr y importent par
+# lien physique (hardlink), sans copier.
+- name: Dossier des telechargements
+  ansible.builtin.file:
+    path: "{{ arr_telechargements }}"
+    state: directory
+    owner: root
+    group: "{{ arr_groupe_media }}"
+    mode: "2775"
+
+- name: qBittorrent
+  ansible.builtin.include_tasks: qbittorrent.yml
+
+- name: Sonarr, Radarr et Prowlarr
+  ansible.builtin.include_tasks: servarr.yml
+  loop: "{{ arr_applications }}"
+  loop_control:
+    loop_var: app
+    label: "{{ app.titre }}"
+
+- name: Relier la suite
+  ansible.builtin.include_tasks: liens.yml

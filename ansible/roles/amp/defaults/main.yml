@@ -1,0 +1,27 @@
+---
+# Script d'installation officiel d'AMP (CubeCoders), verifie par empreinte :
+# il ne change pas sous nos pieds. getamp.sh n'a pas de version publiee ; si
+# CubeCoders le modifie, le role s'arrete : relire le nouveau script, puis
+# mettre a jour l'empreinte.
+amp_installer_url: https://getamp.sh
+amp_installer_sha256: 2e54f917bacad1457266139e4ebc2084e0f980d2d71fac59446f1299528a50de
+
+# Mot de passe genere sur le poste de controle, jamais dans le depot.
+amp_secrets: /root/.cde-secrets/game01
+amp_admin: admin
+
+# Instance de gestion (ADS01) : toutes les adresses, port 8080. Caddy, sur
+# proxy01 dans la meme DMZ, la publie en HTTPS.
+amp_ads_ip: 0.0.0.0
+amp_ads_port: 8080
+
+# Java pour Minecraft ; pas de Docker ni de nginx (Caddy fait le HTTPS).
+amp_answers:
+  USE_ANSWERS: "1"
+  ANSWER_HTTPS: "n"
+  ANSWER_INSTALLJAVA: "y"
+  ANSWER_INSTALL32BITLIBS: "n"
+  ANSWER_INSTALLPODMAN: "n"
+  ANSWER_INSTALLDOCKER: "n"
+  ANSWER_INSTALLDARKMAGIC: "n"
+  ANSWER_REINSTALLDOCKER: "n"

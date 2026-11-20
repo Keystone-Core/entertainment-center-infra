@@ -5,6 +5,8 @@
 #   reseaux : seuls ces reseaux ont acces (les autres recoivent 403)
 #   ca      : certificat de l'autorite d'un amont HTTPS (relatif a ansible/)
 #   nom_tls : nom a verifier dans ce certificat, s'il ne contient pas l'adresse
+#   corriger_http : true si l'amont redirige vers http:// (il ne croit pas
+#                   les en-tetes X-Forwarded de proxy01)
 # Exemple :
 #   - nom: netdata
 #     upstream: 10.10.20.22:19999
@@ -48,9 +50,33 @@ caddy_sites:
   - nom: jellyfin
     upstream: 10.10.20.40:8096
     reseaux: *vlans_internes
+  # Suite *arr et qBittorrent sur media01 (ansible/arr.yml) ; leurs ports
+  # sont deja dans PORTS_HTTP. Sonarr, Radarr et Prowlarr ne croient les
+  # en-tetes X-Forwarded que de leur propre machine : corriger_http.
+  - nom: sonarr
+    upstream: 10.10.20.40:8989
+    reseaux: *vlans_internes
+    corriger_http: true
+  - nom: radarr
+    upstream: 10.10.20.40:7878
+    reseaux: *vlans_internes
+    corriger_http: true
+  - nom: prowlarr
+    upstream: 10.10.20.40:9696
+    reseaux: *vlans_internes
+    corriger_http: true
+  - nom: qbittorrent
+    upstream: 10.10.20.40:8080
+    reseaux: *vlans_internes
   - nom: www
     upstream: 10.10.20.31:80
     reseaux: *vlans_internes
   - nom: phpmyadmin
     upstream: 10.10.20.31:80
+    reseaux: *vlans_internes
+
+  # Panneau AMP sur game01, dans la DMZ comme proxy01 : aucun pare-feu entre
+  # les deux.
+  - nom: amp
+    upstream: 10.10.80.20:8080
     reseaux: *vlans_internes

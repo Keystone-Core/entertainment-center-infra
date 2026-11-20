@@ -60,6 +60,7 @@ The token is copied to `proxy01` on the first run. Later runs don't need it: wit
    | `reseaux` | Only these networks may open the site; Caddy answers 403 to the others                                       |
    | `ca`      | The upstream uses HTTPS with a private or self-signed certificate: path of the public certificate that vouches for it, relative to `ansible/` (for example `files/ca/proxmox.pem`). Caddy verifies the upstream with it. |
    | `nom_tls` | Name to verify in that certificate, when it doesn't contain the upstream's address |
+   | `corriger_http` | `true` when the upstream redirects to `http://`: it only believes the `X-Forwarded-Proto` header from its own machine, not from `proxy01`. Caddy rewrites the `Location` header of its redirects to `https://` (port 80 isn't open). Sonarr, Radarr and Prowlarr need it |
 
 2. Check that the firewall allows `proxy01` to reach the upstream: its address must be in `SERVICES_HTTP` and its port in `PORTS_HTTP` on fw01, or a dedicated DMZ rule allows it (`SERVICES_HTTPS` lists the upstreams reached on 443). Add them if needed and record the change in the network log.
 3. Make the name resolve to `proxy01` inside the centre, on both DNS servers:
@@ -88,6 +89,11 @@ Every site is open to VLANs 10 and 20 only.
 | `https://osticket.divertissementestrie.ca`   | osTicket      | `10.10.20.12:80`                         | Rule 4                                          |
 | `https://homarr.divertissementestrie.ca`     | Homarr        | `10.10.20.41:7575`                       | Rule 4                                          |
 | `https://jellyfin.divertissementestrie.ca`   | Jellyfin      | `10.10.20.40:8096`                       | Rule 4                                          |
+| `https://sonarr.divertissementestrie.ca`     | Sonarr        | `10.10.20.40:8989`                       | Rule 4 (`corriger_http`)                        |
+| `https://radarr.divertissementestrie.ca`     | Radarr        | `10.10.20.40:7878`                       | Rule 4 (`corriger_http`)                        |
+| `https://prowlarr.divertissementestrie.ca`   | Prowlarr      | `10.10.20.40:9696`                       | Rule 4 (`corriger_http`)                        |
+| `https://qbittorrent.divertissementestrie.ca` | qBittorrent  | `10.10.20.40:8080`                       | Rule 4                                          |
+| `https://amp.divertissementestrie.ca`        | AMP           | `10.10.80.20:8080`                       | None: same VLAN as `proxy01`                    |
 | `https://www.divertissementestrie.ca`        | Website       | `10.10.20.31:80` (Traefik)               | Rule 4                                          |
 | `https://phpmyadmin.divertissementestrie.ca` | phpMyAdmin    | `10.10.20.31:80` (Traefik)               | Rule 4                                          |
 

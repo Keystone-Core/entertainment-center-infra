@@ -1,0 +1,51 @@
+---
+# Suite *arr et qBittorrent sur media01 : voir docs/guides/arr.md.
+
+# Secrets generes sur ctrl-iac (mot de passe du compte admin, cles d'API).
+arr_secrets: /root/.cde-secrets/media01
+arr_admin: admin
+
+# Groupe partage avec Jellyfin : memes valeurs que le role jellyfin.
+arr_groupe_media: media
+arr_gid_media: 2000
+arr_dossier_medias: /srv/media
+arr_telechargements: /srv/media/telechargements
+
+# proxy01 (Caddy) : qBittorrent lui fait confiance pour l'adresse des clients.
+arr_proxy: 10.10.80.10
+
+# Versions epinglees. L'archive est verifiee par son empreinte SHA-256, la
+# meme que GitHub publie avec la version. Pour mettre a jour : changer la
+# version, l'adresse et l'empreinte, ou utiliser la mise a jour integree.
+arr_applications:
+  - nom: sonarr
+    titre: Sonarr
+    port: 8989
+    api: v3
+    branche: main
+    dossier: /srv/media/series
+    categorie: series
+    url: https://github.com/Sonarr/Sonarr/releases/download/v4.0.20.3014/Sonarr.main.4.0.20.3014.linux-x64.tar.gz
+    sha256: 1fc48544b5a3401b2fc3df8d0642c1e6a73a28e41a351169edd9cd8f54770db5
+  - nom: radarr
+    titre: Radarr
+    port: 7878
+    api: v3
+    branche: master
+    dossier: /srv/media/films
+    categorie: films
+    url: https://github.com/Radarr/Radarr/releases/download/v7.0.3.10918/Radarr.master.7.0.3.10918.linux-core-x64.tar.gz
+    sha256: 1737e72150ea991c8f224fcf529c419b7e6c567ba672cbf27a61f11c9a51fe8e
+  - nom: prowlarr
+    titre: Prowlarr
+    port: 9696
+    api: v1
+    branche: master
+    dossier: ""
+    categorie: prowlarr
+    url: https://github.com/Prowlarr/Prowlarr/releases/download/v3.0.2.5780/Prowlarr.master.3.0.2.5780.linux-core-x64.tar.gz
+    sha256: 201cec2be9e1c5c4910abe2eccd153381cf06c4500ba6c003126a6f5810c2426
+
+# qBittorrent (paquet Debian qbittorrent-nox) et son interface web.
+arr_qbittorrent_port: 8080
+arr_qbittorrent_profil: /var/lib/qbittorrent

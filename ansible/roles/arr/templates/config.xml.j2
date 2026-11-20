@@ -1,0 +1,15 @@
+<Config>
+  <BindAddress>*</BindAddress>
+  <Port>{{ app.port }}</Port>
+  <EnableSsl>False</EnableSsl>
+  <LaunchBrowser>False</LaunchBrowser>
+  <ApiKey>{{ arr_cles[app.nom] }}</ApiKey>
+  <AuthenticationMethod>Forms</AuthenticationMethod>
+  <AuthenticationRequired>Enabled</AuthenticationRequired>
+  <Branch>{{ app.branche }}</Branch>
+  <LogLevel>info</LogLevel>
+  <UrlBase></UrlBase>
+  <InstanceName>{{ app.titre }}</InstanceName>
+  <AnalyticsEnabled>False</AnalyticsEnabled>
+  <UpdateMechanism>BuiltIn</UpdateMechanism>
+</Config>

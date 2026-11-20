@@ -145,8 +145,8 @@ The critical path is infrastructure, then security, then services, then the medi
 | Linux services        | FreePBX, the centre's website on k3s, the development server on web01 and Netdata in service |
 | Windows services      | Active Directory, DNS, DHCP, hMailServer, Veeam and Defender in service; osTicket runs on Debian |
 | MQTT and ESP32        | Broker in service without TLS. No module connected yet                                      |
-| Automation scripts    | Veeam monitoring (T5.3) and the website backup (T5.2) in service. The other two aren't in the repository yet |
-| Media, Homarr and AMP | Homarr and Jellyfin in service. The \*arr suite and AMP not installed yet                      |
+| Automation scripts    | Veeam monitoring (T5.3), the website backup (T5.2) and the employee import (T5.4) in service. T5.1 isn't in the repository yet |
+| Media, Homarr and AMP | Homarr, Jellyfin, the \*arr suite with qBittorrent, and AMP in service. No indexer configured (team decision) and no game server for now (the cégep's DNS filter blocks Minecraft)                      |
 | Testing               | To come, weeks 14 and 15                                                                    |
 
 ## Documentation

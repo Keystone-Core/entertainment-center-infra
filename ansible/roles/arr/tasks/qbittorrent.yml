@@ -1,0 +1,81 @@
+---
+# qBittorrent (qbittorrent-nox), avec son interface web sur le port 8080.
+
+- name: "qBittorrent : utilisateur systeme"
+  ansible.builtin.user:
+    name: qbittorrent
+    system: true
+    group: "{{ arr_groupe_media }}"
+    home: "{{ arr_qbittorrent_profil }}"
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: "qBittorrent : dossiers du profil"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: qbittorrent
+    group: "{{ arr_groupe_media }}"
+    mode: "0750"
+  loop:
+    - "{{ arr_qbittorrent_profil }}"
+    - "{{ arr_qbittorrent_profil }}/qBittorrent"
+    - "{{ arr_qbittorrent_profil }}/qBittorrent/config"
+
+- name: "qBittorrent : verifier la configuration"
+  ansible.builtin.stat:
+    path: "{{ arr_qbittorrent_profil }}/qBittorrent/config/qBittorrent.conf"
+  register: arr_qbt_conf
+
+# qBittorrent ne garde qu'une empreinte PBKDF2 du mot de passe.
+- name: "qBittorrent : empreinte du mot de passe"
+  ansible.builtin.command:
+    cmd: >-
+      python3 -c "import base64, hashlib, os, sys;
+      s = os.urandom(16);
+      h = hashlib.pbkdf2_hmac('sha512', sys.stdin.read().encode(), s, 100000);
+      print('@ByteArray(' + base64.b64encode(s).decode() + ':' + base64.b64encode(h).decode() + ')')"
+    stdin: "{{ arr_mdp_admin }}"
+    stdin_add_newline: false
+  register: arr_qbt_empreinte
+  changed_when: false
+  when: not arr_qbt_conf.stat.exists
+  no_log: true
+
+# Valeurs de depart seulement (force: false) : qBittorrent reecrit ce
+# fichier en s'arretant. Ensuite, on le regle dans son interface web.
+- name: "qBittorrent : configuration de depart"
+  ansible.builtin.template:
+    src: qBittorrent.conf.j2
+    dest: "{{ arr_qbittorrent_profil }}/qBittorrent/config/qBittorrent.conf"
+    owner: qbittorrent
+    group: "{{ arr_groupe_media }}"
+    mode: "0600"
+    force: false
+  when: not arr_qbt_conf.stat.exists
+  no_log: true
+
+- name: "qBittorrent : service systemd"
+  ansible.builtin.template:
+    src: qbittorrent.service.j2
+    dest: /etc/systemd/system/qbittorrent.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: arr_qbt_unite
+
+- name: "qBittorrent : actif au demarrage"
+  ansible.builtin.systemd_service:
+    name: qbittorrent
+    state: "{{ 'restarted' if arr_qbt_unite.changed else 'started' }}"
+    enabled: true
+    daemon_reload: "{{ arr_qbt_unite.changed }}"
+
+- name: "qBittorrent : attendre l'interface web"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ arr_qbittorrent_port }}/api/v2/app/version"
+    status_code: [200, 403]
+  register: arr_qbt_web
+  until: arr_qbt_web.status in [200, 403]
+  retries: 15
+  delay: 2

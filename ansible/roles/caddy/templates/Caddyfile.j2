@@ -34,6 +34,12 @@
 {% endif %}
 		}
 	}
+{% elif site.corriger_http | default(false) %}
+	# L'amont ne croit pas les en-tetes X-Forwarded de proxy01 et redirige
+	# vers http:// (port 80, ferme) : ses redirections passent en https://.
+	reverse_proxy {{ site.upstream }} {
+		header_down Location http:// https://
+	}
 {% else %}
 	reverse_proxy {{ site.upstream }}
 {% endif %}
