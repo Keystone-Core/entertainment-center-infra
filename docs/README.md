@@ -61,7 +61,7 @@ Techniques de l'informatique (Computer Science Technology)
 - [FreePBX Telephony](guides/freepbx.md): the phone system on `voip01`, its extensions and passwords, setting up a phone, and running the `freepbx` role
 - [Netdata Monitoring](guides/netdata.md): the nine Linux servers streaming to `mon01`, opening the dashboard and each server's page, and running the `netdata` role
 - [Mosquitto MQTT Broker](guides/mosquitto.md): the broker on `mqtt01`, its accounts and topics, the Ansible Vault passwords and what is left for TLS
-- [AMP Game Server Panel](guides/amp.md): AMP on `game01`, the `amp` role, the Minecraft server and the cégep's DNS filter
+- [AMP Game Server Panel](guides/amp.md): AMP on `game01`, the `amp` role, the cégep's DNS filter and the games that get through it
 - [Homarr Dashboard](guides/homarr.md): the dashboard on `dash01`, its encryption key and the `homarr` role
 - [Email and Help Desk](guides/email-and-tickets.md): hMailServer on `mail01` and osTicket on `tick01`
 - [Veeam Backups](guides/veeam-backups.md): what is backed up, the backup job and the monitoring script
